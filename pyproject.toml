@@ -1,0 +1,48 @@
+[project]
+name = "xeos"
+dynamic = ["version"]
+authors = [
+    {name="Henri F. Drake", email="hfdrake@uci.edu"},
+]
+description = "xarray-enabled wrappers for various Equations of State of seawater"
+keywords = [
+    "oceanography",
+    "ocean modeling",
+    "water mass transformation",
+]
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numba",
+    "numpy",
+    "xarray",
+    "seawater",
+    "fastjmd95",
+    "momlevel",
+    "gsw",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/hdrake/xeos"
+"Bugs/Issues/Features" = "https://github.com/hdrake/xeos/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "xeos/version.py"
+
+[tool.hatch.build]
+exclude = ["examples/**", "data/**", "docs/**"]

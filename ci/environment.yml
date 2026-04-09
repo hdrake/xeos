@@ -1,0 +1,10 @@
+name: test_env_xeos
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python>=3.11
+  - black
+  - pylint
+  - pytest
+  - pip
