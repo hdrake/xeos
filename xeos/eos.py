@@ -27,7 +27,7 @@ def _check_p_units(p, eos):
         valid_units_str = ", ".join(target_units)
 
         if units is None:
-            warnings.warn(f"No 'units' found in `p`. {eos} expects one of: {valid_units_str}.")
+            warnings.warn(f"No 'units' attribute found in `p`. {eos} expects one of: {valid_units_str}.")
             
         elif units.lower() not in target_units:
             warnings.warn(f"Unit mismatch: `p` has '{units}', but {eos} expects one of: {valid_units_str}.")
