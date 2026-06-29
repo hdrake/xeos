@@ -1,7 +1,8 @@
 """Idealized second-order Roquet equations of state (Oceananigans).
 
-Roquet, F., G. Madec, T.J. McDougall, P.M. Barker (2015): "Defining a Simplified
+Roquet, F., G. Madec, L. Brodeau, J. Nycander (2015): "Defining a Simplified
 yet 'Realistic' Equation of State for Seawater." J. Phys. Oceanogr., 45, Table 3.
+(doi:10.1175/JPO-D-15-0080.1)
 
 These are the ``RoquetSeawaterPolynomial(:Linear | :Cabbeling | ...)`` options in
 SeawaterPolynomials.jl / Oceananigans.  Each is a second-order polynomial of the

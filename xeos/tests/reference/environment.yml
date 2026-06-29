@@ -1,8 +1,9 @@
 # Pinned environment for REGENERATING the reference truth fixtures (truth.json).
 #
-# This is intentionally separate from xeos's own runtime environment: it pulls in
-# the heavyweight reference packages (gsw, fastjmd95, momlevel, seawater) that
-# xeos deliberately does NOT depend on at runtime. The frozen truth.json produced
+# This is intentionally separate from xeos's own runtime environment. Truth now
+# comes primarily from MODEL SOURCE compiled/run on demand (MOM6 + MITgcm Fortran
+# via gfortran; Oceananigans' SeawaterPolynomials.jl via julia), so the only heavy
+# Python reference left is gsw (canonical TEOS-10). The frozen truth.json produced
 # here is what the test suite consumes, so the regular tests stay lightweight.
 #
 # Versions below match what produced the committed truth.json (see its
@@ -18,11 +19,13 @@ channels:
 dependencies:
   - python=3.11
   - numpy
-  - gfortran       # builds the MOM6 ROQUET_SpV Fortran driver for roquet-spv truth
+  - gfortran       # compiles the MOM6 + MITgcm + MPAS-O Fortran drivers
+  - julia          # runs SeawaterPolynomials.jl for the idealized roquet-* forms
   - pip
   - pip:
       - gsw==3.6.23
-      - fastjmd95==0.2.1
-      - momlevel==1.0.5
-      - seawater==3.3.5
-      - MITgcmutils==0.2.2
+# Julia packages (SeawaterPolynomials, JSON) are installed on first run into a
+# dedicated, gitignored project env (xeos/tests/reference/_julia_env/) so they do
+# not perturb -- or depend on -- the user's global Julia environment.
+# Retired Python ports (now validated against model source instead): momlevel
+# (wright97-*), fastjmd95 (jmd95), MITgcmutils (unesco/mdjwf).

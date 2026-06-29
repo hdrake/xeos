@@ -141,6 +141,32 @@ def test_low_salinity_beta_is_finite():
             assert np.isfinite(float(eos.beta(10.0, s, 0.0))), (eos_id, s)
 
 
+def test_mpas_jm_wright_reuse_existing_kernels():
+    """MPAS-O's jm/wright are byte-for-byte the jmd95/wright97-reduced EOS, so the
+    mpas-* backends reuse those kernels: densities must be bit-identical (this is the
+    invariant the MPAS-O Fortran truth in test_backends.py independently confirms)."""
+    T = np.array([-1.0, 8.0, 25.0])
+    S = np.array([32.0, 35.0, 37.0])
+    P = np.array([0.0, 1500.0, 4000.0])
+    t, s, p = (a.ravel() for a in np.meshgrid(T, S, P))
+    np.testing.assert_array_equal(
+        np.asarray(xeos.equation_of_state("mpas-jm").rho(t, s, p)),
+        np.asarray(xeos.equation_of_state("jmd95").rho(t, s, p)))
+    np.testing.assert_array_equal(
+        np.asarray(xeos.equation_of_state("mpas-wright").rho(t, s, p)),
+        np.asarray(xeos.equation_of_state("wright97-reduced").rho(t, s, p)))
+
+
+def test_mpas_linear_uses_namelist_defaults():
+    """mpas-linear bakes in MPAS-O's Registry defaults:
+    rho = 1000 - 0.2*(T-5) + 0.8*(S-35), with alpha=0.2/rho, beta=0.8/rho."""
+    eos = xeos.equation_of_state("mpas-linear")
+    assert np.isclose(float(eos.rho(5.0, 35.0, 0.0)), 1000.0)
+    assert np.isclose(float(eos.rho(25.0, 35.0, 0.0)), 996.0)  # 1000 - 0.2*20
+    assert np.isclose(float(eos.drho_dt(10.0, 35.0, 0.0)), -0.2)
+    assert np.isclose(float(eos.drho_ds(10.0, 35.0, 0.0)), 0.8)
+
+
 def test_pressure_unit_conversion():
     """Same physical pressure given in dbar vs Pa yields the same density."""
     in_dbar = xeos.equation_of_state("jmd95", pressure_input_unit="dbar")
