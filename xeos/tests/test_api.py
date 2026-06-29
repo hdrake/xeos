@@ -94,10 +94,20 @@ def test_idealized_roquet_derivatives_match_finite_difference(eos_id):
     np.testing.assert_allclose(float(eos.beta(ct, sa, p)), fd_beta, rtol=1e-6)
 
 
-def test_idealized_roquet_linear_check_value():
-    # rho = rho_ref + R100*S + R010*T  (rho_ref=1024.6, R100=0.7718, R010=-0.1775)
-    eos = xeos.from_model("Oceananigans", "ROQUETLINEAR")
-    assert np.isclose(float(eos.rho(10.0, 35.0, 0.0)), 1024.6 + 0.7718 * 35 - 0.1775 * 10)
+# Independent check values at (CT=10, SA=35, p=0 -> Z=0), hand-computed from the
+# Roquet et al. (2015) Table 3 coefficients (rho_ref=1024.6). These do not reuse
+# the code's COEFFICIENTS dict, so a transcription typo there would be caught.
+@pytest.mark.parametrize("eos_id,expected", [
+    ("roquet-linear", 1049.838),                    # +0.7718*35 -0.1775*10
+    ("roquet-cabbeling", 1050.3129),                # -0.0844*10 -4.561e-3*100
+    ("roquet-cabbeling-thermobaricity", 1050.4573),  # -0.0651*10 -5.027e-3*100
+    ("roquet-freezing", 1050.6193),                 # -0.0491*10 -5.027e-3*100
+    ("roquet-second-order", 1051.5686),             # full 2nd-order at Z=0
+    ("roquet-simplest-realistic", 1050.505),        # 0.77*35 -0.0495*10 -0.0055*100
+])
+def test_idealized_roquet_check_values(eos_id, expected):
+    eos = xeos.equation_of_state(eos_id)
+    assert np.isclose(float(eos.rho(10.0, 35.0, 0.0)), expected, atol=1e-3)
 
 
 def test_thermobaricity_adds_pressure_dependence():
@@ -106,6 +116,29 @@ def test_thermobaricity_adds_pressure_dependence():
     tb = xeos.equation_of_state("roquet-cabbeling-thermobaricity")
     assert np.isclose(float(cab.rho(10.0, 35.0, 0.0)), float(cab.rho(10.0, 35.0, 2000.0)))
     assert not np.isclose(float(tb.rho(10.0, 35.0, 0.0)), float(tb.rho(10.0, 35.0, 2000.0)))
+
+
+def test_wright_full_sanity_vs_gsw():
+    """wright97-full has no exact Python reference (momlevel ships the *reduced*
+    coefficients). Sanity-bound its density against TEOS-10/gsw over an
+    oceanographic range to catch gross coefficient-transcription typos
+    (measured max deviation ~0.17 kg/m3; bound at 0.5)."""
+    gsw = pytest.importorskip("gsw")
+    T = np.array([0.0, 5.0, 10.0, 20.0, 30.0])
+    S = np.array([33.0, 35.0, 37.0])
+    P = np.array([0.0, 1000.0, 4000.0])
+    t, s, p = (a.ravel() for a in np.meshgrid(T, S, P))
+    wf = np.asarray(xeos.equation_of_state("wright97-full").rho(t, s, p))
+    assert np.max(np.abs(wf - gsw.rho(s, t, p))) < 0.5
+
+
+def test_low_salinity_beta_is_finite():
+    """Regression: beta of the finite-difference backends must not be NaN near
+    fresh water (the FD stencil contains sqrt(s))."""
+    for eos_id in ("jmd95", "unesco", "mdjwf"):
+        eos = xeos.equation_of_state(eos_id)
+        for s in (0.0, 0.0005, 0.01):
+            assert np.isfinite(float(eos.beta(10.0, s, 0.0))), (eos_id, s)
 
 
 def test_pressure_unit_conversion():

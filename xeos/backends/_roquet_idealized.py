@@ -35,6 +35,8 @@ COEFFICIENTS = {
         R100=8.078e-1, R010=0.182e-1, R020=-4.937e-3, R011=-2.4677e-5,
         R200=-1.115e-4, R101=-8.241e-6, R110=-2.446e-3),
     # Simplest-realistic (Roquet 2015 eq. 17): Cb=0.011, Th=2.5e-5, b0=0.77, T0=-4.5.
+    # The constant R000 = -Cb*T0^2/2 (~-0.11 kg m-3) is omitted (no dynamical effect),
+    # matching SeawaterPolynomials.jl; this offsets the absolute density by that constant.
     "roquet-simplest-realistic": dict(
         R100=0.77, R010=0.011 * -4.5, R020=-0.011 / 2, R011=-2.5e-5),
 }

@@ -20,14 +20,15 @@ the inputs themselves are stored alongside the expected outputs.
 | `momlevel.eos.wright`  | `wright97-reduced`     | density + alpha/beta; same functional form as `wright97-full`, so this validates the shared code path |
 | `polyTEOS10.py`        | `teos10-poly55`        | density + alpha/beta; downloaded at generation time (not committed) |
 | `gsw`                  | `teos10`               | density + alpha/beta |
-| `MITgcmutils.density`  | `unesco`, `mdjwf`      | density |
+| `MITgcmutils.density`  | `unesco`, `mdjwf`      | density + `alpha`/`beta` (centred-difference of the reference density, validating xeos's own FD path) |
 
 The following have no standalone Python reference and are checked structurally in
-`test_api.py` (shared-formula correctness, exact analytic `alpha`/`beta` vs finite
-differences, literal check values): `wright97-full`, `linear`, and the idealized
-second-order Roquet forms (`roquet-linear`, `roquet-cabbeling`,
+`test_api.py`: `wright97-full` (shared Wright formula, plus a gsw sanity bound of
+0.5 kg/m3 over the oceanographic range to catch gross coefficient typos), `linear`,
+and the idealized second-order Roquet forms (`roquet-linear`, `roquet-cabbeling`,
 `roquet-cabbeling-thermobaricity`, `roquet-freezing`, `roquet-second-order`,
-`roquet-simplest-realistic`).
+`roquet-simplest-realistic`; one hand-computed check value each plus exact analytic
+`alpha`/`beta` vs finite differences).
 
 > **Deferred:** the Roquet *specific-volume* form (`ROQUET_SPV`) is not yet
 > implemented — the only available Python reference (`polyTEOS10_55t`) disagrees

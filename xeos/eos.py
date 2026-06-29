@@ -7,6 +7,8 @@ and derives ``alpha``/``beta`` from the backend's analytic density derivatives,
 falling back to centred finite differences when a backend supplies none.
 """
 
+import numpy as np
+
 from .conventions import PressureUnit, to_native_pressure
 from .registry import get_backend, EOSBackend
 from .xarray_utils import apply_eos
@@ -90,8 +92,13 @@ class EquationOfState:
     def _drho_ds(self, t, s, pn):
         if self.backend.drho_ds is not None:
             return self.backend.drho_ds(t, s, pn)
+        # Centred difference, but switch to a forward difference where salinity is
+        # below the step (several EOS contain sqrt(s), so s - _DS < 0 -> NaN).
+        # This keeps beta finite for near-fresh water (river plumes, ice melt).
+        s_lo = np.where(s >= _DS, s - _DS, s)
+        denom = np.where(s >= _DS, 2.0 * _DS, _DS)
         return (self.backend.density(t, s + _DS, pn)
-                - self.backend.density(t, s - _DS, pn)) / (2.0 * _DS)
+                - self.backend.density(t, s_lo, pn)) / denom
 
     # -- quantities --------------------------------------------------------
     def rho(self, t, s, p):

@@ -7,19 +7,13 @@ result.  Otherwise the kernel is called directly on the (broadcast) arrays.
 """
 
 import numpy as np
-
-try:
-    import xarray as xr
-
-    _HAS_XARRAY = True
-except ImportError:  # pragma: no cover
-    _HAS_XARRAY = False
+import xarray as xr  # hard runtime dependency
 
 __all__ = ["apply_eos"]
 
 
 def _is_dataarray(obj):
-    return _HAS_XARRAY and isinstance(obj, xr.DataArray)
+    return isinstance(obj, xr.DataArray)
 
 
 def apply_eos(func, *args, attrs=None):

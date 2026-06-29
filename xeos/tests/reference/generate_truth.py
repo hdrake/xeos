@@ -79,8 +79,24 @@ def main():
 
     cases = {}
 
+    def fd_alpha_beta(densfunc, ss, tt, pp, h=1.0e-3):
+        """alpha/beta by centred difference of an independent reference density.
+
+        Uses the same step the facade uses, so xeos's own finite-difference path
+        is validated against a *different* density implementation (catches sign /
+        unit mistakes in that path). densfunc signature is (salt, theta, p_dbar).
+        """
+        rho0 = np.asarray(densfunc(ss, tt, pp))
+        a = -(np.asarray(densfunc(ss, tt + h, pp))
+              - np.asarray(densfunc(ss, tt - h, pp))) / (2.0 * h) / rho0
+        b = (np.asarray(densfunc(ss + h, tt, pp))
+             - np.asarray(densfunc(ss - h, tt, pp))) / (2.0 * h) / rho0
+        return a.tolist(), b.tolist()
+
     # jmd95 (fastjmd95): rho(s, t, p_dbar)
-    cases["jmd95"] = {"rho": fastjmd95.rho(s, t, p).tolist()}
+    jmd95_a, jmd95_b = fd_alpha_beta(fastjmd95.rho, s, t, p)
+    cases["jmd95"] = {"rho": fastjmd95.rho(s, t, p).tolist(),
+                      "alpha": jmd95_a, "beta": jmd95_b}
 
     # wright97-reduced (momlevel): density(T, S, p_Pa)
     p_pa = p * 1.0e4
@@ -107,8 +123,12 @@ def main():
     }
 
     # unesco / mdjwf (MITgcmutils.density): density(salt, theta, p_dbar)
-    cases["unesco"] = {"rho": np.asarray(mitgcm_density.unesco(s, t, p)).tolist()}
-    cases["mdjwf"] = {"rho": np.asarray(mitgcm_density.mdjwf(s, t, p)).tolist()}
+    unesco_a, unesco_b = fd_alpha_beta(mitgcm_density.unesco, s, t, p)
+    cases["unesco"] = {"rho": np.asarray(mitgcm_density.unesco(s, t, p)).tolist(),
+                       "alpha": unesco_a, "beta": unesco_b}
+    mdjwf_a, mdjwf_b = fd_alpha_beta(mitgcm_density.mdjwf, s, t, p)
+    cases["mdjwf"] = {"rho": np.asarray(mitgcm_density.mdjwf(s, t, p)).tolist(),
+                      "alpha": mdjwf_a, "beta": mdjwf_b}
 
     out = {
         "_README": "Frozen reference values; regenerate with generate_truth.py. "
