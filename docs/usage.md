@@ -22,6 +22,9 @@ b   = eos.beta(theta, salt, pressure)    # haline contraction
 # MITgcm eosType = 'JMD95Z'
 xeos.from_model("MITgcm", "JMD95Z").rho(theta, salt, p)
 
+# MPAS-Ocean config_eos_type = 'jm'
+xeos.from_model("MPAS-Ocean", "jm").rho(theta, salt, p)
+
 # Oceananigans TEOS10EquationOfState
 xeos.from_model("Oceananigans", "TEOS10EquationOfState").rho(CT, SA, p)
 ```
@@ -60,14 +63,18 @@ eos.salinity      # SalinityKind.ABSOLUTE
 
 - **linear** — configurable (MOM6/MITgcm/Oceananigans `LINEAR`)
 - **wright97-full**, **wright97-reduced** — Wright 1997 (MOM6 `WRIGHT_FULL`, `WRIGHT`/`WRIGHT_RED`)
-- **jmd95** — Jackett & McDougall 1995 (MITgcm `JMD95Z`/`JMD95P`)
-- **unesco** — UNESCO/EOS-80 (MOM6 `UNESCO`/`JACKETT_MCD`, MITgcm `UNESCO`)
+- **jmd95** — Jackett & McDougall 1995 (MITgcm `JMD95Z`/`JMD95P`; **also** MOM6
+  `UNESCO`/`JACKETT_MCD`, which are this fit — *not* EOS-80)
+- **unesco** — UNESCO/EOS-80, Fofonoff & Millard 1983 (MITgcm `UNESCO`)
 - **mdjwf** — McDougall et al. 2003 (MITgcm `MDJWF`)
 - **teos10-poly55** — Roquet 55-term polynomial / TEOS-10 density form
   (Oceananigans `TEOS10EquationOfState`, MOM6 `ROQUET_RHO`/`NEMO`)
 - **roquet-spv** — Roquet 55-term specific-volume form (MOM6 `ROQUET_SPV`)
 - **roquet-{linear,cabbeling,cabbeling-thermobaricity,freezing,second-order,simplest-realistic}**
   — idealized second-order Roquet forms (Oceananigans `RoquetSeawaterPolynomial(:…)`)
+- **mpas-linear**, **mpas-jm**, **mpas-wright** — MPAS-Ocean / E3SM
+  `config_eos_type` = `linear`/`jm`/`wright`; `mpas-jm` and `mpas-wright` reuse the
+  `jmd95` and `wright97-reduced` kernels (MPAS-O's `jm`/`wright` are the same EOS)
 - **teos10** — TEOS-10 via `gsw` (MOM6/MITgcm `TEOS10`). See the note below: this
   is itself the Roquet 75-term polynomial, not the exact Gibbs function.
 
@@ -99,10 +106,33 @@ absolute salinity, are fitted only inside the realistic T–S–p "funnel", and 
 models use them. The idealized forms trade nearly all accuracy for interpretability
 and should only be used to reproduce a run that itself used them.
 
-### References
+## References
 
-- Roquet, Madec, McDougall & Barker (2015), *Ocean Modelling* **90**, 29–43 — the
+Each vendored EOS reproduces a specific published formulation. DOIs are given as
+plain strings (the legacy AMS DOIs contain `<>` and aren't URL-safe); prefix with
+`https://doi.org/` to resolve.
+
+- **Wright (1997)**, *J. Atmos. Oceanic Technol.* **14**, 735–740 — the Wright EOS
+  (`wright97-full`, `wright97-reduced`, `mpas-wright`).
+  `doi:10.1175/1520-0426(1997)014<0735:AEOSFU>2.0.CO;2`
+- **Jackett & McDougall (1995)**, *J. Atmos. Oceanic Technol.* **12**, 381–389 — the
+  JMD95 refit of UNESCO/EOS-80 (`jmd95`, `mpas-jm`, and MOM6's `UNESCO`/`JACKETT_MCD`).
+  `doi:10.1175/1520-0426(1995)012<0381:MAOHPT>2.0.CO;2`
+- **Fofonoff & Millard (1983)**, *UNESCO Tech. Papers in Marine Science* **44** — the
+  original UNESCO/EOS-80 (`unesco`; MITgcm `UNESCO`). (UNESCO report; no DOI.)
+- **McDougall, Jackett, Wright & Feistel (2003)**, *J. Atmos. Oceanic Technol.* **20**,
+  730–741 — the MDJWF rational-function EOS (`mdjwf`).
+  `doi:10.1175/1520-0426(2003)20<730:AACEAF>2.0.CO;2`
+- **Roquet, Madec, McDougall & Barker (2015)**, *Ocean Modelling* **90**, 29–43 — the
   accurate 55-/75-term polynomials (`teos10`, `teos10-poly55`, `roquet-spv`).
-- Roquet, Madec, McDougall & Barker (2015), *J. Phys. Oceanogr.* **45**, 2564–2579 —
+  [`doi:10.1016/j.ocemod.2015.04.002`](https://doi.org/10.1016/j.ocemod.2015.04.002)
+- **Roquet, Madec, Brodeau & Nycander (2015)**, *J. Phys. Oceanogr.* **45**, 2564–2579 —
   the idealized simplified forms (`roquet-{linear,cabbeling,…}`).
-- IOC, SCOR & IAPSO (2010); McDougall & Barker (2011) — the TEOS-10 standard / GSW.
+  [`doi:10.1175/JPO-D-15-0080.1`](https://doi.org/10.1175/JPO-D-15-0080.1)
+- **Ringler, Petersen, Higdon, Jacobsen, Jones & Maltrud (2013)**, *Ocean Modelling*
+  **69**, 211–232 — MPAS-Ocean / E3SM (`mpas-*`).
+  [`doi:10.1016/j.ocemod.2013.04.010`](https://doi.org/10.1016/j.ocemod.2013.04.010)
+- **IOC, SCOR & IAPSO (2010)**, *The international thermodynamic equation of seawater –
+  2010* (TEOS-10 Manual); **McDougall & Barker (2011)**, *Getting started with TEOS-10
+  and the GSW Oceanographic Toolbox* — the TEOS-10 standard / `gsw` (`teos10`).
+  (Manuals; no DOI.)

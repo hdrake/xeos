@@ -2,8 +2,8 @@
 
 **Lightweight, xarray-enabled wrappers for seawater equations of state.**
 
-Ocean models (MOM6, Oceananigans, MITgcm) differ in the equation of state (EOS)
-they use, and many let you change it at run time. Python post-processing then
+Ocean models (MOM6, MITgcm, MPAS-Ocean, Oceananigans) differ in the equation of
+state (EOS) they use, and many let you change it at run time. Python post-processing then
 often applies a *different* EOS than the simulation did, silently corrupting
 derived quantities like density, thermal expansion, and water-mass transformation
 diagnostics. `xeos` lets you pick the EOS that matches your run — **by the model's
