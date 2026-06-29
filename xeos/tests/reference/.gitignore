@@ -2,13 +2,14 @@
 # generators (MOM6 is LGPL, polyTEOS is MIT). Only the resulting truth.json
 # (frozen numbers) and the generator scripts themselves are committed.
 
-# Downloaded model source (MOM6 + MITgcm Fortran, Roquet's polyTEOS Python)
+# Downloaded model source (MOM6 + MITgcm + MPAS-O Fortran, Roquet's polyTEOS Python)
 MOM_EOS_*.F90
 ini_eos.F
 find_rho.F
+mpas_ocn_equation_of_state_*.F
 polyTEOS10.py
 
-# Generated Fortran drivers + compiled binaries
+# Generated Fortran drivers + compiled binaries (covers _mpas_*_driver too)
 _*_driver.f90
 _*_driver
 

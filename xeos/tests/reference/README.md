@@ -31,6 +31,7 @@ the `_build_*.py` scripts; source itself not committed) is preferred:
 | MOM6 `MOM_EOS_Wright_red.F90` / `_full.F90` (gfortran) | `wright97-reduced`, `wright97-full` | density + analytic alpha/beta; replaces the `momlevel` Python port and gives `wright97-full` its first numeric truth (`_build_wright_fortran.py`) |
 | MOM6 `MOM_EOS_UNESCO.F90` (gfortran) | `jmd95@mom6` → `jmd95` | MOM6's "UNESCO" *is* the JMD95 fit; a **second** model source for `jmd95` besides MITgcm's own (`_build_unesco_fortran.py`) |
 | MOM6 `MOM_EOS_Roquet_SpV.F90` (gfortran) | `roquet-spv` | density + analytic alpha/beta (`_build_roquet_spv_fortran.py`) |
+| MPAS-O `mpas_ocn_equation_of_state_{linear,jm,wright}.F` (gfortran) | `mpas-linear`, `mpas-jm`, `mpas-wright` | density + FD alpha/beta. `mpas-jm`/`mpas-wright` reuse the `jmd95`/`wright97-reduced` kernels, so this is an independent check that MPAS-O's `jm`/`wright` are byte-for-byte the same EOS (`_build_mpas_eos_fortran.py`; E3SM source not committed) |
 | `SeawaterPolynomials.jl` (Julia, Oceananigans) | the six idealized `roquet-*` forms | density + analytic alpha/beta; first numeric truth for these (`_build_seawaterpolynomials_julia.py`) |
 | `gsw`                 | `teos10`               | canonical TEOS-10 (accepted exception); density + alpha/beta |
 | `polyTEOS10.py`       | `teos10-poly55`        | Roquet's own code; density + alpha/beta (could add MOM6 `MOM_EOS_Roquet_rho.F90`) |
@@ -56,6 +57,16 @@ lightweight structural checks *in addition* to the new numeric truth above.
 > p=1000 dbar) before emitting truth, so upstream reformatting can't silently
 > corrupt the fixtures. Requires `gfortran` (in this folder's `environment.yml`).
 
+> **Note on `mpas-*`:** MPAS-Ocean's `config_eos_type` selects `linear`, `jm`
+> (Jackett & McDougall 1995) or `wright` (Wright 1997). The `jm`/`wright` kernels
+> are byte-for-byte identical to xeos's `jmd95`/`wright97-reduced`, so xeos's
+> `mpas-jm`/`mpas-wright` backends *reuse* those kernels; `_build_mpas_eos_fortran.py`
+> compiles MPAS-O's own Fortran (`mpas_ocn_equation_of_state_*.F`) and confirms the
+> reuse is exact (each driver self-checks a published value first — e.g. `jm` gives
+> the UNESCO/EOS-80 surface density 1023.343 kg/m3 at θ=25, S=35, p=0). MPAS-O's T/S
+> clamping and depth→pressure parameterisations are documented in `xeos/backends/_mpas.py`
+> but not reproduced (the grid is in-range, so clamping is a no-op for density).
+
 ## Regenerating
 
 ```bash
@@ -64,9 +75,9 @@ conda activate xeos-reference
 python generate_truth.py              # rewrites truth.json
 ```
 
-`generate_truth.py` downloads the MOM6 Fortran / `polyTEOS10.py` sources and runs
-`SeawaterPolynomials.jl` on demand; each `_build_*.py` driver **self-checks a
-published value** before emitting truth, so a mangled extraction or an upstream
+`generate_truth.py` downloads the MOM6 / MITgcm / MPAS-O Fortran and `polyTEOS10.py`
+sources and runs `SeawaterPolynomials.jl` on demand; each `_build_*.py` driver
+**self-checks a value** before emitting truth, so a mangled extraction or an upstream
 change fails loudly. The downloaded sources, generated drivers/binaries, and the
 Julia env (`_julia_env/`) are git-ignored — only the resulting `truth.json` numbers
 are committed. Commit the updated `truth.json` (and bump versions in

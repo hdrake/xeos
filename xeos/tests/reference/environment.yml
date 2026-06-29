@@ -19,7 +19,7 @@ channels:
 dependencies:
   - python=3.11
   - numpy
-  - gfortran       # compiles the MOM6 + MITgcm Fortran drivers
+  - gfortran       # compiles the MOM6 + MITgcm + MPAS-O Fortran drivers
   - julia          # runs SeawaterPolynomials.jl for the idealized roquet-* forms
   - pip
   - pip:

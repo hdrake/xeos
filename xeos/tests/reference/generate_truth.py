@@ -16,6 +16,7 @@ Reference -> backend validated:
     MOM6 MOM_EOS_Wright_{red,full}.F90 -> wright97-reduced, wright97-full (gfortran)
     MOM6 MOM_EOS_UNESCO.F90            -> jmd95@mom6 (the MOM6 'UNESCO' = JMD95 fit)
     MOM6 MOM_EOS_Roquet_SpV.F90        -> roquet-spv (gfortran)
+    MPAS-O mpas_ocn_equation_of_state_*.F -> mpas-linear, mpas-jm, mpas-wright (gfortran)
     SeawaterPolynomials.jl (Julia)     -> the six idealized roquet-* forms
     polyTEOS10.py                      -> teos10-poly55      (downloaded if absent)
     gsw                                -> teos10
@@ -148,6 +149,17 @@ def main():
     if unesco_mom6 is not None:
         cases["jmd95@mom6"] = {"backend": "jmd95", **unesco_mom6}
 
+    # mpas-{linear,jm,wright}: validated against MPAS-Ocean's authoritative Fortran
+    # (E3SM components/mpas-ocean). mpas-jm / mpas-wright reuse the jmd95 /
+    # wright97-reduced kernels; this is an independent source check of that reuse.
+    # Skipped if gfortran is unavailable; the committed truth.json keeps the values.
+    from _build_mpas_eos_fortran import mpas_eos_truth
+    mpas_truth = mpas_eos_truth(t, s, p)
+    if mpas_truth is not None:
+        cases.update(mpas_truth)
+    else:
+        print("WARNING: gfortran not found; mpas-* truth not regenerated.")
+
     out = {
         "_README": "Frozen reference values; regenerate with generate_truth.py. "
                    "Inputs t,s,p fed identically to xeos and to each reference.",
@@ -167,6 +179,9 @@ def main():
                     "github.com/mom-ocean/MOM6 main",
                 "MOM_EOS_Roquet_SpV.F90 (roquet-spv)":
                     "github.com/mom-ocean/MOM6 main",
+                "mpas_ocn_equation_of_state_{linear,jm,wright}.F (mpas-*)":
+                    "github.com/E3SM-Project/E3SM master "
+                    "(components/mpas-ocean/src/shared)",
                 "SeawaterPolynomials.jl (roquet-* idealized)":
                     "github.com/CliMA/SeawaterPolynomials.jl",
             },

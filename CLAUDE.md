@@ -41,15 +41,17 @@ The package is a small registry-and-facade design. Data flows:
   **dbar**), `_roquet` (55-term TEOS-10 density polynomial, **dbar**≈depth),
   `_roquet_spv` (55-term specific-volume form, MOM6 `ROQUET_SPV`), and
   `_roquet_idealized` (6 second-order Roquet forms via one factory, conservative
-  temp / absolute salinity, Z = −p). `_teos10` is a thin lazy-`gsw` wrapper.
+  temp / absolute salinity, Z = −p), and `_mpas` (MPAS-Ocean: `mpas-linear` plus
+  `mpas-jm`/`mpas-wright`, which **reuse** the `_jmd95`/`_wright`-reduced kernels —
+  byte-identical EOS). `_teos10` is a thin lazy-`gsw` wrapper.
 - **`eos.py`** — `EquationOfState` facade. Converts user pressure (default dbar)
   to each backend's native unit, dispatches via `xarray_utils.apply_eos`, and
   computes `alpha = -drho_dt/rho`, `beta = drho_ds/rho` from analytic derivatives,
   falling back to centred finite differences when a backend supplies none.
 - **`models.py`** — `MODEL_SELECTORS` alias table mapping each model's selector
-  strings (MOM6 `EQN_OF_STATE`, MITgcm `eosType`, Oceananigans EOS types) to
-  canonical ids; `from_model()` and `equation_of_state()` (the latter handles
-  parameterised schemes like `linear`).
+  strings (MOM6 `EQN_OF_STATE`, MITgcm `eosType`, Oceananigans EOS types, MPAS-O
+  `config_eos_type`) to canonical ids; `from_model()` and `equation_of_state()`
+  (the latter handles parameterised schemes like `linear`).
 - **`conventions.py`** — `TemperatureKind`/`SalinityKind`/`PressureUnit` enums
   and optional gsw-backed conversion helpers. **xeos never silently converts
   inputs**; backends declare the kinds they expect. TEOS-10 + Roquet take
@@ -82,6 +84,14 @@ import it in `backends/__init__.py`, and add its model selector strings to
   check values. `_roquet_spv.py` uses the correct `24` and is validated against
   MOM6's authoritative Fortran (`MOM_EOS_Roquet_SpV.F90`), not the buggy Python —
   see `xeos/tests/reference/_build_roquet_spv_fortran.py`. (Bug reported upstream.)
+- **MPAS-O `jm`/`wright` are the same EOS as `jmd95`/`wright97-reduced`.** MPAS-O's
+  `config_eos_type` offers `linear`, `jm` (Jackett-McDougall 1995) and `wright`
+  (Wright 1997, reduced coefficients); the `jm`/`wright` coefficients are
+  byte-for-byte identical to xeos's existing kernels, so `_mpas.py` reuses those
+  kernel functions rather than re-vendoring them, and the `mpas-jm`/`mpas-wright`
+  truth (from MPAS-O's own Fortran, `_build_mpas_eos_fortran.py`) confirms the reuse
+  is exact. MPAS-O's T/S clamping and depth→pressure parameterisations are
+  documented in `_mpas.py` but **not** applied (the facade takes pressure as input).
 - **Not yet implemented:** MOM6 `JACKETT_06`, MOM6 `WRIGHT` legacy-buggy, MITgcm
   `POLY3` (per-level runtime coefficients), MITgcm `IDEALGAS`. Add as new
   `backends/_*.py` + selector entries when a trustworthy reference is available.
@@ -91,19 +101,21 @@ import it in `backends/__init__.py`, and add its model selector strings to
 `test_backends.py` validates each vendored kernel against frozen values in
 `xeos/tests/reference/truth.json`. **Preferred truth source is the model's own
 source code**, not a third-party Python port: MITgcm Fortran (`jmd95`, `unesco`,
-`mdjwf` — coefficients parsed from `ini_eos.F`, formulas from `find_rho.F`) and
-MOM6 Fortran (`wright97-*`, `jmd95@mom6`, `roquet-spv`) compiled with gfortran, plus
+`mdjwf` — coefficients parsed from `ini_eos.F`, formulas from `find_rho.F`), MOM6
+Fortran (`wright97-*`, `jmd95@mom6`, `roquet-spv`) and MPAS-Ocean Fortran
+(`mpas-linear`/`-jm`/`-wright`, from E3SM) all compiled with gfortran, plus
 Oceananigans' `SeawaterPolynomials.jl` run via Julia (the six idealized `roquet-*`
 forms); `gsw` is the accepted exception for `teos10`. The `_build_*.py` generators
 download/compile/run those sources on demand (each self-checks a value first) and
 emit only numbers, so the committed `truth.json` stays toolchain-free to consume.
 A truth case may set a `"backend"` field to validate one kernel against multiple
 model sources (e.g. `jmd95@mom6` → the `jmd95` backend, which is *also* validated
-against MITgcm's own Fortran). Only `polyTEOS10.py` (→ `teos10-poly55`) remains a
-Python-port reference; `gsw` is canonical. All run in a **separate pinned env**
-(`xeos/tests/reference/environment.yml`: gfortran + julia + gsw); the regular suite
-reads only `truth.json`. Regenerate via `xeos/tests/reference/README.md` and commit
-the updated JSON.
+against MITgcm's own Fortran; `mpas-jm`/`mpas-wright` reuse the `jmd95`/
+`wright97-reduced` kernels and confirm MPAS-O's `jm`/`wright` are the same EOS).
+Only `polyTEOS10.py` (→ `teos10-poly55`) remains a Python-port reference; `gsw` is
+canonical. All run in a **separate pinned env** (`xeos/tests/reference/environment.yml`:
+gfortran + julia + gsw); the regular suite reads only `truth.json`. Regenerate via
+`xeos/tests/reference/README.md` and commit the updated JSON.
 
 ## Versioning
 

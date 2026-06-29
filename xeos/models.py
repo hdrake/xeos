@@ -1,9 +1,10 @@
 """Resolve an ocean model's own EOS selector string to an :class:`EquationOfState`.
 
 The headline entry point is :func:`from_model`: pass the model name and the exact
-selector you set in the model (MOM6 ``EQN_OF_STATE``, MITgcm ``eosType``, or an
-Oceananigans EOS type) and get back the matching ``xeos`` equation of state, so
-post-processing uses the same EOS the simulation did.
+selector you set in the model (MOM6 ``EQN_OF_STATE``, MITgcm ``eosType``,
+MPAS-Ocean ``config_eos_type``, or an Oceananigans EOS type) and get back the
+matching ``xeos`` equation of state, so post-processing uses the same EOS the
+simulation did.
 """
 
 from .eos import EquationOfState
@@ -13,8 +14,8 @@ from .backends._linear import make_linear
 __all__ = ["from_model", "equation_of_state", "MODEL_SELECTORS"]
 
 # (model -> {normalised selector -> canonical EOS id}).  Selectors are matched
-# case-insensitively with surrounding whitespace stripped.  Only Phase-1 schemes
-# are listed; further selectors are added as their backends land.
+# case-insensitively with surrounding whitespace stripped.  Further selectors are
+# added as their backends land.
 MODEL_SELECTORS = {
     "MOM6": {
         "LINEAR": "linear",
@@ -42,6 +43,11 @@ MODEL_SELECTORS = {
         "MDJWF": "mdjwf",
         "TEOS10": "teos10",
     },
+    "MPAS": {
+        "LINEAR": "mpas-linear",
+        "JM": "mpas-jm",
+        "WRIGHT": "mpas-wright",
+    },
     "OCEANANIGANS": {
         "LINEAR": "linear",
         "LINEAREQUATIONOFSTATE": "linear",
@@ -65,6 +71,10 @@ _MODEL_ALIASES = {
     "MOM6": "MOM6",
     "MITGCM": "MITGCM",
     "MITGCMUTILS": "MITGCM",
+    "MPAS": "MPAS",
+    "MPAS-O": "MPAS",
+    "MPASO": "MPAS",
+    "MPAS-OCEAN": "MPAS",
     "OCEANANIGANS": "OCEANANIGANS",
     "OCEANANIGANS.JL": "OCEANANIGANS",
 }
@@ -91,6 +101,7 @@ def from_model(model, selector, pressure_input_unit="dbar", **params):
     --------
     >>> from_model("MOM6", "WRIGHT_FULL")        # doctest: +SKIP
     >>> from_model("MITgcm", "JMD95Z")           # doctest: +SKIP
+    >>> from_model("MPAS-Ocean", "jm")           # doctest: +SKIP
     >>> from_model("Oceananigans", "TEOS10EquationOfState")  # doctest: +SKIP
     """
     model_key = _MODEL_ALIASES.get(str(model).strip().upper())
