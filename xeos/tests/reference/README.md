@@ -21,6 +21,7 @@ the inputs themselves are stored alongside the expected outputs.
 | `polyTEOS10.py`        | `teos10-poly55`        | density + alpha/beta; downloaded at generation time (not committed) |
 | `gsw`                  | `teos10`               | density + alpha/beta |
 | `MITgcmutils.density`  | `unesco`, `mdjwf`      | density + `alpha`/`beta` (centred-difference of the reference density, validating xeos's own FD path) |
+| MOM6 `MOM_EOS_Roquet_SpV.F90` (compiled with gfortran) | `roquet-spv` | density + `alpha`/`beta`; built/run on demand by `_build_roquet_spv_fortran.py` (MOM6 source not committed) |
 
 The following have no standalone Python reference and are checked structurally in
 `test_api.py`: `wright97-full` (shared Wright formula, plus a gsw sanity bound of
@@ -30,10 +31,14 @@ and the idealized second-order Roquet forms (`roquet-linear`, `roquet-cabbeling`
 `roquet-simplest-realistic`; one hand-computed check value each plus exact analytic
 `alpha`/`beta` vs finite differences).
 
-> **Deferred:** the Roquet *specific-volume* form (`ROQUET_SPV`) is not yet
-> implemented — the only available Python reference (`polyTEOS10_55t`) disagrees
-> with its own documented check values, so it cannot be validated. The Roquet
-> *density* form (`ROQUET_RHO` → `teos10-poly55`) is supported.
+> **Note on `roquet-spv`:** the widely-used `polyTEOS10.py` reference is unusable
+> here — its `polyTEOS10_55t` routine has a `deltaS=32` typo (should be `24`) that
+> makes its specific-volume output disagree with its own published check values
+> (reported upstream). `roquet-spv` is therefore validated against MOM6's
+> authoritative Fortran (`MOM_EOS_Roquet_SpV.F90`), compiled with gfortran. The
+> driver self-checks the published specvol value (9.732820466e-04 at SA=30, CT=10,
+> p=1000 dbar) before emitting truth, so upstream reformatting can't silently
+> corrupt the fixtures. Requires `gfortran` (in this folder's `environment.yml`).
 
 ## Regenerating
 

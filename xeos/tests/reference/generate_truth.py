@@ -122,6 +122,16 @@ def main():
         "beta": np.asarray(gsw.beta(s, t, p)).tolist(),
     }
 
+    # roquet-spv: validated against MOM6's authoritative Fortran (no trustworthy
+    # Python reference exists — polyTEOS10_55t has a deltaS typo). Skipped if
+    # gfortran is unavailable; the committed truth.json keeps the frozen values.
+    from _build_roquet_spv_fortran import roquet_spv_truth, gfortran_version
+    spv_truth = roquet_spv_truth(s, t, p)
+    if spv_truth is not None:
+        cases["roquet-spv"] = spv_truth
+    else:
+        print("WARNING: gfortran not found; roquet-spv truth not regenerated.")
+
     # unesco / mdjwf (MITgcmutils.density): density(salt, theta, p_dbar)
     unesco_a, unesco_b = fd_alpha_beta(mitgcm_density.unesco, s, t, p)
     cases["unesco"] = {"rho": np.asarray(mitgcm_density.unesco(s, t, p)).tolist(),
@@ -142,6 +152,8 @@ def main():
                 "MITgcmutils": _ver("MITgcmutils"),
                 "numpy": _ver("numpy"),
                 "polyTEOS10": POLYTEOS_URL,
+                "gfortran (roquet-spv)": gfortran_version(),
+                "MOM_EOS_Roquet_SpV.F90": "github.com/mom-ocean/MOM6 main",
             },
             "grid": {"T": T_VALS, "S": S_VALS, "P_dbar": P_VALS},
         },

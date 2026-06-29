@@ -11,5 +11,6 @@ from . import _jmd95  # noqa: F401
 from . import _unesco  # noqa: F401
 from . import _mdjwf  # noqa: F401
 from . import _roquet  # noqa: F401
+from . import _roquet_spv  # noqa: F401
 from . import _roquet_idealized  # noqa: F401
 from . import _teos10  # noqa: F401

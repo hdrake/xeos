@@ -15,6 +15,7 @@ from xeos.registry import list_eos
     ("MOM6", "ROQUET_RHO", "teos10-poly55"),
     ("MOM6", "UNESCO", "unesco"),
     ("MOM6", "JACKETT_MCD", "unesco"),
+    ("MOM6", "ROQUET_SPV", "roquet-spv"),
     ("MITgcm", "JMD95Z", "jmd95"),
     ("MITgcm", "JMD95P", "jmd95"),
     ("MITgcm", "UNESCO", "unesco"),

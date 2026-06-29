@@ -26,9 +26,7 @@ MODEL_SELECTORS = {
         "JACKETT_MCD": "unesco",
         "ROQUET_RHO": "teos10-poly55",
         "NEMO": "teos10-poly55",
-        # NOTE: ROQUET_SPV (specific-volume form) is deferred — the only available
-        # Python reference (polyTEOS10_55t) disagrees with its own check values,
-        # so it cannot yet be validated. ROQUET_RHO (density form) is supported.
+        "ROQUET_SPV": "roquet-spv",
         "TEOS10": "teos10",
     },
     "MITGCM": {
