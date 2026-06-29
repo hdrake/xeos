@@ -13,9 +13,10 @@ The coefficients -- where cross-model drift and porting typos live -- come strai
 from ``ini_eos.F`` (downloaded on demand, not committed; only the numbers go into
 ``truth.json``). The polynomial/rational forms are transcribed line-for-line from
 ``find_rho.F`` (cited inline). Before any output is trusted, each driver self-checks
-its density at S=35, T=25, p=2000 dbar against a value computed independently, in
-numpy, from the *same parsed coefficients* -- an independent code path, so a mangled
-parse or a transcription slip fails loudly.
+its density at S=35, T=25, p=2000 dbar against a FROZEN external constant (``_CHECK``,
+the published JMD95/EOS-80/MDJWF density at that point) -- independent of this
+module's coefficient parse, so a parse that selects valid-but-wrong coefficients, a
+transcription slip, or an upstream change all fail loudly.
 
 alpha/beta are produced by centred finite difference of the compiled density (the
 same h=1e-3 the facade uses for these FD-fallback backends), validating xeos's own
@@ -32,7 +33,6 @@ Notes from the MITgcm source:
     MDJWF is dbar (p1 = locPres*SItodBar, 1e-4). We feed locPres in Pa = p_dbar*1e4.
 """
 
-import math
 import os
 import re
 import subprocess
@@ -44,7 +44,7 @@ _F = os.path.join(HERE, "ini_eos.F")  # gitignored
 
 _H = 1.0e-3  # FD step; matches the facade's _DT/_DS
 
-# Check point for the self-check gate (independent numpy eval, below).
+# Check point for the external self-check gate (see _CHECK below).
 _CHK_S, _CHK_T, _CHK_P = 35.0, 25.0, 2000.0
 
 
@@ -76,7 +76,10 @@ def _coefficients():
                   "equationOfState(1:5) .EQ. 'JMD95'")
     jmd_bulk = _slice(src, "equationOfState(1:5) .EQ. 'JMD95'",
                       "equationOfState .EQ. 'UNESCO'")
-    uns_bulk = _slice(src, "equationOfState .EQ. 'UNESCO'",
+    # Use the unique UNESCO ELSEIF marker: the bare "equationOfState .EQ. 'UNESCO'"
+    # first appears in the *combined* JMD95Z/JMD95P/UNESCO condition (which precedes
+    # the JMD95 bulk block), so it would wrongly include that block.
+    uns_bulk = _slice(src, "ELSEIF ( equationOfState .EQ. 'UNESCO' )",
                       "INI_EOS: We should never")
     mdjwf = _slice(src, "equationOfState .EQ. 'MDJWF'",
                    "equationOfState .EQ. 'TEOS10'")
@@ -104,42 +107,16 @@ def _coefficients():
     }
 
 
-# ---- independent numpy reference (self-check gate only) ---------------------
-
-def _np_secant(c, t, s, p_dbar):
-    t2, t3, t4 = t * t, t * t * t, t * t * t * t
-    s = max(s, 0.0)
-    s3o2 = s * math.sqrt(s)
-    p = p_dbar * 0.1            # bar  (= p_Pa * SItoBar = p_dbar*1e4*1e-5)
-    p2 = p * p
-    F, Sc, KF, KS, KP = c["CFw"], c["CSw"], c["CKFw"], c["CKSw"], c["CKP"]
-    rho0 = (F[0] + F[1] * t + F[2] * t2 + F[3] * t3 + F[4] * t4 + F[5] * t4 * t
-            + s * (Sc[0] + Sc[1] * t + Sc[2] * t2 + Sc[3] * t3 + Sc[4] * t4)
-            + s3o2 * (Sc[5] + Sc[6] * t + Sc[7] * t2) + Sc[8] * s * s)
-    bm = (KF[0] + KF[1] * t + KF[2] * t2 + KF[3] * t3 + KF[4] * t4
-          + s * (KS[0] + KS[1] * t + KS[2] * t2 + KS[3] * t3)
-          + s3o2 * (KS[4] + KS[5] * t + KS[6] * t2)
-          + p * (KP[0] + KP[1] * t + KP[2] * t2 + KP[3] * t3)
-          + p * s * (KP[4] + KP[5] * t + KP[6] * t2) + p * s3o2 * KP[7]
-          + p2 * (KP[8] + KP[9] * t + KP[10] * t2)
-          + p2 * s * (KP[11] + KP[12] * t + KP[13] * t2))
-    return rho0 / (1.0 - p / bm)
-
-
-def _np_mdjwf(c, t1, s1, p_dbar):
-    t2 = t1 * t1
-    s1 = max(s1, 0.0)
-    sp5 = math.sqrt(s1)
-    p1 = p_dbar                 # dbar  (= p_Pa * SItodBar = p_dbar*1e4*1e-4)
-    p1t1 = p1 * t1
-    n, d = c["num"], c["den"]
-    num = (n[0] + t1 * (n[1] + t1 * (n[2] + n[3] * t1))
-           + s1 * (n[4] + n[5] * t1 + n[6] * s1)
-           + p1 * (n[7] + n[8] * t2 + n[9] * s1 + p1 * (n[10] + n[11] * t2)))
-    den = (d[0] + t1 * (d[1] + t1 * (d[2] + t1 * (d[3] + t1 * d[4])))
-           + s1 * (d[5] + t1 * (d[6] + d[7] * t2) + sp5 * (d[8] + d[9] * t2))
-           + p1 * (d[10] + p1t1 * (d[11] * t2 + d[12] * p1)))
-    return num / den
+# External self-check anchors at (S=35, T=25, p=2000 dbar): in-situ density from
+# the published JMD95 / EOS-80 / MDJWF coefficients. These are FROZEN constants,
+# independent of this module's parse of ini_eos.F, so a parse that selects
+# valid-but-wrong coefficients makes the compiled Fortran miss them and fail loudly
+# (a numpy reference built from the *same* parsed coefficients could not catch that).
+_CHECK = {
+    "jmd95": 1031.6521274959705,
+    "unesco": 1031.7976768716112,
+    "mdjwf": 1031.6542294507979,
+}
 
 
 # ---- Fortran driver generation ---------------------------------------------
@@ -276,23 +253,20 @@ def mitgcm_truth(s, t, p_dbar):
         return None
     coeffs = _coefficients()
     drivers = {
-        "jmd95": (_secant_driver(coeffs["jmd95"]),
-                  lambda S, T, P: _np_secant(coeffs["jmd95"], T, S, P)),
-        "unesco": (_secant_driver(coeffs["unesco"]),
-                   lambda S, T, P: _np_secant(coeffs["unesco"], T, S, P)),
-        "mdjwf": (_mdjwf_driver(coeffs["mdjwf"]),
-                  lambda S, T, P: _np_mdjwf(coeffs["mdjwf"], T, S, P)),
+        "jmd95": _secant_driver(coeffs["jmd95"]),
+        "unesco": _secant_driver(coeffs["unesco"]),
+        "mdjwf": _mdjwf_driver(coeffs["mdjwf"]),
     }
     s, t, p_dbar = list(s), list(t), list(p_dbar)
     n = len(s)
     out = {}
-    for eos_id, (source, npref) in drivers.items():
+    for eos_id, source in drivers.items():
         binary = _build(eos_id, source)
         check = _run(binary, [_CHK_S], [_CHK_T], [_CHK_P])[0]
-        expect = npref(_CHK_S, _CHK_T, _CHK_P)
+        expect = _CHECK[eos_id]
         assert abs(check - expect) < 1e-9 * expect, (
-            f"MITgcm {eos_id} driver failed its check: rho={check!r} "
-            f"(numpy ref {expect!r})")
+            f"MITgcm {eos_id} driver failed its external check: rho={check!r} "
+            f"(expected {expect!r}) -- parsed coefficients likely wrong")
         rho = _run(binary, s, t, p_dbar)
         rt_p = _run(binary, s, [ti + _H for ti in t], p_dbar)
         rt_m = _run(binary, s, [ti - _H for ti in t], p_dbar)

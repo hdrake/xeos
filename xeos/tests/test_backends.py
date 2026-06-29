@@ -1,10 +1,11 @@
 """Cross-validate xeos's vendored kernels against frozen reference values.
 
-The expected values in ``reference/truth.json`` were produced by the authoritative
-reference packages (gsw, fastjmd95, momlevel, polyTEOS10) in a pinned environment
--- see ``reference/README.md``.  The same numeric ``(t, s, p)`` inputs are fed to
-xeos here; agreement to ~1e-6 confirms the kernels reproduce their sources rather
-than merely approximating them.
+The expected values in ``reference/truth.json`` are produced primarily by compiling
+each model's own source (MITgcm / MOM6 / MPAS-Ocean Fortran via gfortran;
+Oceananigans' ``SeawaterPolynomials.jl`` via Julia), with ``gsw`` the one remaining
+Python reference -- see ``reference/README.md``.  The same numeric ``(t, s, p)``
+inputs are fed to xeos here; agreement to ~1e-6 confirms the kernels reproduce their
+model sources rather than merely approximating them.
 """
 
 import json
@@ -62,4 +63,7 @@ def test_provenance_present():
     # Guard against an un-stamped/hand-edited fixture.
     versions = TRUTH["provenance"]["reference_versions"]
     assert versions["gsw"] != "unknown"
-    assert versions["gfortran"]  # model-source toolchain stamp must be present
+    # model-source toolchain stamps must be present (a regeneration on a box missing
+    # one would stamp null here, flagging that those cases were left stale).
+    assert versions["gfortran"]
+    assert versions["julia"]
