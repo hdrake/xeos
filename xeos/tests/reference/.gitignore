@@ -4,3 +4,12 @@ polyTEOS10.py
 MOM_EOS_Roquet_SpV.F90
 _roquet_spv_driver.f90
 _roquet_spv_driver
+mpas_ocn_equation_of_state_jm.F
+mpas_ocn_equation_of_state_wright.F
+mpas_ocn_equation_of_state_linear.F
+_mpas_jm_driver.f90
+_mpas_jm_driver
+_mpas_wright_driver.f90
+_mpas_wright_driver
+_mpas_linear_driver.f90
+_mpas_linear_driver

@@ -37,6 +37,11 @@ MODEL_SELECTORS = {
         "MDJWF": "mdjwf",
         "TEOS10": "teos10",
     },
+    "MPAS": {
+        "LINEAR": "mpas-linear",
+        "JM": "mpas-jm",
+        "WRIGHT": "mpas-wright",
+    },
     "OCEANANIGANS": {
         "LINEAR": "linear",
         "LINEAREQUATIONOFSTATE": "linear",
@@ -60,6 +65,10 @@ _MODEL_ALIASES = {
     "MOM6": "MOM6",
     "MITGCM": "MITGCM",
     "MITGCMUTILS": "MITGCM",
+    "MPAS": "MPAS",
+    "MPAS-O": "MPAS",
+    "MPASO": "MPAS",
+    "MPAS-OCEAN": "MPAS",
     "OCEANANIGANS": "OCEANANIGANS",
     "OCEANANIGANS.JL": "OCEANANIGANS",
 }

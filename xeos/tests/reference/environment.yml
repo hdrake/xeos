@@ -18,7 +18,8 @@ channels:
 dependencies:
   - python=3.11
   - numpy
-  - gfortran       # builds the MOM6 ROQUET_SpV Fortran driver for roquet-spv truth
+  - gfortran       # builds the MOM6 ROQUET_SpV and MPAS-O EOS Fortran drivers
+                   # (roquet-spv and mpas-linear/jm/wright truth)
   - pip
   - pip:
       - gsw==3.6.23

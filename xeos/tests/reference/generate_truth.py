@@ -17,6 +17,8 @@ Reference packages -> backend validated:
     polyTEOS10.py           -> teos10-poly55      (downloaded if absent)
     gsw                     -> teos10
     MITgcmutils.density     -> unesco, mdjwf
+    MOM6 Fortran (gfortran) -> roquet-spv
+    MPAS-O Fortran (gfortran) -> mpas-linear, mpas-jm, mpas-wright
 
 The idealized second-order Roquet forms (roquet-linear, roquet-cabbeling, ...)
 have no standalone Python reference and are validated structurally in test_api.py
@@ -132,6 +134,17 @@ def main():
     else:
         print("WARNING: gfortran not found; roquet-spv truth not regenerated.")
 
+    # mpas-{linear,jm,wright}: validated against MPAS-Ocean's authoritative Fortran
+    # (E3SM components/mpas-ocean). mpas-jm / mpas-wright reuse the jmd95 /
+    # wright97-reduced kernels; this is an independent source check of that reuse.
+    # Skipped if gfortran is unavailable; the committed truth.json keeps the values.
+    from _build_mpas_eos_fortran import mpas_eos_truth
+    mpas_truth = mpas_eos_truth(t, s, p)
+    if mpas_truth is not None:
+        cases.update(mpas_truth)
+    else:
+        print("WARNING: gfortran not found; mpas-* truth not regenerated.")
+
     # unesco / mdjwf (MITgcmutils.density): density(salt, theta, p_dbar)
     unesco_a, unesco_b = fd_alpha_beta(mitgcm_density.unesco, s, t, p)
     cases["unesco"] = {"rho": np.asarray(mitgcm_density.unesco(s, t, p)).tolist(),
@@ -154,6 +167,9 @@ def main():
                 "polyTEOS10": POLYTEOS_URL,
                 "gfortran (roquet-spv)": gfortran_version(),
                 "MOM_EOS_Roquet_SpV.F90": "github.com/mom-ocean/MOM6 main",
+                "mpas_ocn_equation_of_state_{linear,jm,wright}.F":
+                    "github.com/E3SM-Project/E3SM master "
+                    "(components/mpas-ocean/src/shared)",
             },
             "grid": {"T": T_VALS, "S": S_VALS, "P_dbar": P_VALS},
         },

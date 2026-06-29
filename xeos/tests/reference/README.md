@@ -22,6 +22,7 @@ the inputs themselves are stored alongside the expected outputs.
 | `gsw`                  | `teos10`               | density + alpha/beta |
 | `MITgcmutils.density`  | `unesco`, `mdjwf`      | density + `alpha`/`beta` (centred-difference of the reference density, validating xeos's own FD path) |
 | MOM6 `MOM_EOS_Roquet_SpV.F90` (compiled with gfortran) | `roquet-spv` | density + `alpha`/`beta`; built/run on demand by `_build_roquet_spv_fortran.py` (MOM6 source not committed) |
+| MPAS-O `mpas_ocn_equation_of_state_{linear,jm,wright}.F` (compiled with gfortran) | `mpas-linear`, `mpas-jm`, `mpas-wright` | density + `alpha`/`beta` (centred-difference of the MPAS-source density); built/run on demand by `_build_mpas_eos_fortran.py` (E3SM source not committed). `mpas-jm`/`mpas-wright` reuse the `jmd95`/`wright97-reduced` kernels, so this is an independent check that MPAS-O's `jm`/`wright` are byte-for-byte the same EOS |
 
 The following have no standalone Python reference and are checked structurally in
 `test_api.py`: `wright97-full` (shared Wright formula, plus a gsw sanity bound of
@@ -39,6 +40,16 @@ and the idealized second-order Roquet forms (`roquet-linear`, `roquet-cabbeling`
 > driver self-checks the published specvol value (9.732820466e-04 at SA=30, CT=10,
 > p=1000 dbar) before emitting truth, so upstream reformatting can't silently
 > corrupt the fixtures. Requires `gfortran` (in this folder's `environment.yml`).
+
+> **Note on `mpas-*`:** MPAS-Ocean's `config_eos_type` selects `linear`, `jm`
+> (Jackett & McDougall 1995) or `wright` (Wright 1997). The `jm`/`wright` kernels
+> are byte-for-byte identical to xeos's `jmd95`/`wright97-reduced`, so xeos's
+> `mpas-jm`/`mpas-wright` backends *reuse* those kernels; `_build_mpas_eos_fortran.py`
+> compiles MPAS-O's own Fortran (`mpas_ocn_equation_of_state_*.F`) and confirms the
+> reuse is exact (each driver self-checks a published value first — e.g. `jm` gives
+> the UNESCO/EOS-80 surface density 1023.343 kg/m3 at θ=25, S=35, p=0). MPAS-O's T/S
+> clamping and depth→pressure parameterisations are documented in `xeos/backends/_mpas.py`
+> but not reproduced (the grid is in-range, so clamping is a no-op for density).
 
 ## Regenerating
 
