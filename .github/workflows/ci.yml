@@ -8,9 +8,20 @@ on:
     branches:
       - main
 
-jobs:
-  build:
+# Modern replacement for styfle/cancel-workflow-action: cancel superseded runs
+# of this workflow on the same ref (e.g. rapid pushes to a PR branch).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
+jobs:
+  # ---------------------------------------------------------------------------
+  # Full cross-validation suite across the supported Python range, using the
+  # pinned conda environment (numpy/xarray + the optional gsw + dask extras) so
+  # the TEOS-10 backend and the dask-parallelized path are actually exercised.
+  # ---------------------------------------------------------------------------
+  test-conda:
+    name: test (conda, py${{ matrix.python-version }})
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -21,30 +32,103 @@ jobs:
         python-version: ['3.11', '3.12', '3.13', '3.14']
 
     steps:
-      - name: Cancel previous runs
-        uses: styfle/cancel-workflow-action@0.7.0
-        with:
-          access_token: ${{ github.token }}
       - name: Checkout source
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
-      - name: Conda setup
-        uses: conda-incubator/setup-miniconda@v2
+      - name: Set up conda (miniforge)
+        uses: conda-incubator/setup-miniconda@v3
         with:
+          miniforge-version: latest
           channels: conda-forge
-          mamba-version: '*'
+          channel-priority: strict
           python-version: ${{ matrix.python-version }}
           activate-environment: test_env_xeos
           auto-activate-base: false
 
-      - name: Set up conda environment
-        run: |
-          mamba env update -f ci/environment.yml
-          python -m pip install -e .
-      - name: Conda list information
+      - name: Update environment from ci/environment.yml
+        run: conda env update -f ci/environment.yml
+
+      - name: Editable install
+        run: python -m pip install -e .
+
+      - name: Environment info
         run: |
           conda env list
           conda list
+
       - name: Test with pytest
+        run: pytest -ra
+
+  # ---------------------------------------------------------------------------
+  # Guard the "core install stays lightweight" invariant: install ONLY the
+  # core package (numpy + xarray) via pip, confirm no heavy optional deps leaked
+  # in, and run the suite. The gsw/dask-dependent cases skip themselves cleanly
+  # (pytest.importorskip / ImportError -> pytest.skip), so this also serves as a
+  # non-conda cross-check that the vendored numpy kernels stand on their own.
+  # ---------------------------------------------------------------------------
+  test-pip-core:
+    name: test (pip, core-only)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install core package only (numpy + xarray)
         run: |
-          pytest
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Assert the core install did not pull heavy optional deps
+        run: |
+          python -c "import xeos; print('xeos import OK,', len(xeos.list_eos()), 'backends registered')"
+          python - <<'PY'
+          import importlib.util
+          for mod in ("gsw", "dask", "numba"):
+              assert importlib.util.find_spec(mod) is None, \
+                  f"{mod} unexpectedly installed by the core `pip install -e .` (invariant broken)"
+          print("lightweight-core invariant holds: gsw/dask/numba absent")
+          PY
+
+      - name: Run tests (pytest added separately so it is not a core dep)
+        run: |
+          python -m pip install pytest
+          pytest -ra
+
+  # ---------------------------------------------------------------------------
+  # Style / static-analysis. Advisory (non-blocking): the vendored numeric
+  # kernels deliberately use compact, hand-aligned coefficient tables and
+  # oceanographic single-letter names (R100, A0, SA, CT, ...), which black would
+  # explode line-per-value and pylint flags as naming/format violations. The
+  # job still runs so reviewers see the output, but does not gate the workflow.
+  # Flip `continue-on-error` to false once the team adopts a [tool.black] /
+  # pylint config that codifies those exceptions.
+  # ---------------------------------------------------------------------------
+  lint:
+    name: lint / format (advisory)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install lint tools + package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . black pylint
+
+      - name: black --check
+        continue-on-error: true
+        run: black --check --diff xeos
+
+      - name: pylint
+        continue-on-error: true
+        run: pylint xeos

@@ -1,0 +1,6 @@
+# Third-party reference code downloaded/built on demand by generate_truth.py.
+# Only the resulting truth.json (frozen numbers) is committed.
+polyTEOS10.py
+MOM_EOS_Roquet_SpV.F90
+_roquet_spv_driver.f90
+_roquet_spv_driver

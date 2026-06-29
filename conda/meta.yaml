@@ -1,0 +1,66 @@
+{% set name = "xeos" %}
+{% set version = "0.0.1" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  # conda-forge builds from the sdist published on PyPI. The sha256 below MUST
+  # be filled in AFTER the sdist for this version is uploaded to PyPI:
+  #   1. release to PyPI (the GitHub "Publish to PyPI" workflow does this),
+  #   2. grab the sha256 from https://pypi.org/project/xeos/#files (the sdist's
+  #      "view hashes" link) or run:
+  #        curl -sL https://pypi.org/pypi/xeos/{{ version }}/json \
+  #          | python -c "import json,sys;print([u['digests']['sha256'] for u in json.load(sys.stdin)['urls'] if u['packagetype']=='sdist'][0])"
+  #   3. paste it into the {{ PYPI_SHA256 }} placeholder below.
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  sha256: {{ PYPI_SHA256 }}  # TODO: fill in from the PyPI sdist for this version
+
+build:
+  # Pure-Python library, no compiled extensions and no console entry points.
+  noarch: python
+  number: 0
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python >=3.11
+    - hatchling
+    - pip
+  run:
+    - python >=3.11
+    - numpy
+    - xarray
+    # gsw (full TEOS-10) and numba (acceleration) are OPTIONAL extras, not
+    # required at runtime, so they are intentionally NOT listed here. Users who
+    # want them install gsw / numba separately (the PyPI `xeos[complete]` extra).
+
+test:
+  imports:
+    - xeos
+    - xeos.backends
+  commands:
+    - pip check
+  requires:
+    - pip
+
+about:
+  home: https://github.com/hdrake/xeos
+  summary: xarray-enabled wrappers for various Equations of State of seawater
+  description: |
+    xeos provides lightweight, xarray/dask-aware wrappers over many seawater
+    Equations of State (EOS), so analysts can apply the same EOS their ocean
+    model run used (MOM6, Oceananigans, MITgcm), selected by the model's own
+    selector string. The polynomial/rational EOS are vendored as numpy kernels,
+    so the core install needs only numpy + xarray. Full TEOS-10 is delegated to
+    the optional gsw dependency.
+  license: MIT
+  license_family: MIT
+  license_file: LICENSE
+  doc_url: https://github.com/hdrake/xeos
+  dev_url: https://github.com/hdrake/xeos
+
+extra:
+  recipe-maintainers:
+    - hdrake

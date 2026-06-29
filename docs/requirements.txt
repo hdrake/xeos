@@ -1,0 +1,11 @@
+# Documentation build dependencies.
+# Kept separate from pyproject.toml on purpose (the release agent owns that file).
+sphinx>=7
+furo
+myst-parser
+sphinx-autodoc-typehints
+# Install xeos itself (with the gsw extra) so autodoc can import every module,
+# including the teos10 backend. The relative path resolves against the working
+# directory pip is invoked from, so install from the repo root:
+#     pip install -r docs/requirements.txt
+.[teos10]

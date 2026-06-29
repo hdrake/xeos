@@ -23,15 +23,24 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Operating System :: OS Independent",
 ]
+# Core runtime is deliberately lightweight: the polynomial/rational EOS are
+# vendored as numpy kernels, so only numpy + xarray are required. Heavier
+# backends (TEOS-10 via gsw) and acceleration (numba) are opt-in extras.
 dependencies = [
-    "numba",
     "numpy",
     "xarray",
-    "seawater",
-    "fastjmd95",
-    "momlevel",
-    "gsw",
 ]
+
+[project.optional-dependencies]
+# Full TEOS-10 (gsw is itself lightweight; only depends on numpy).
+teos10 = ["gsw"]
+# Everything an end user might want: full TEOS-10 (gsw) plus numba acceleration.
+# Advertised in the README as `pip install xeos[complete]`.
+complete = ["gsw", "numba"]
+# Test deps: pytest + gsw (so the TEOS-10 cases run) + dask (exercises the
+# dask-parallelized path). The reference packages that produce the frozen
+# fixtures are NOT here — see xeos/tests/reference/README.md.
+test = ["pytest", "gsw", "dask"]
 
 [project.urls]
 "Homepage" = "https://github.com/hdrake/xeos"
@@ -45,4 +54,6 @@ build-backend = "hatchling.build"
 path = "xeos/version.py"
 
 [tool.hatch.build]
-exclude = ["examples/**", "data/**", "docs/**"]
+# Never ship the third-party reference code that generate_truth.py downloads
+# on demand (only the frozen truth.json it produces is distributed).
+exclude = ["examples/**", "data/**", "docs/**", "**/reference/polyTEOS10.py"]

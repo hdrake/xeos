@@ -1,0 +1,28 @@
+# Pinned environment for REGENERATING the reference truth fixtures (truth.json).
+#
+# This is intentionally separate from xeos's own runtime environment: it pulls in
+# the heavyweight reference packages (gsw, fastjmd95, momlevel, seawater) that
+# xeos deliberately does NOT depend on at runtime. The frozen truth.json produced
+# here is what the test suite consumes, so the regular tests stay lightweight.
+#
+# Versions below match what produced the committed truth.json (see its
+# provenance.reference_versions block). Update both together when regenerating.
+#
+#   conda env create -f environment.yml
+#   conda activate xeos-reference
+#   python generate_truth.py
+name: xeos-reference
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.11
+  - numpy
+  - gfortran       # builds the MOM6 ROQUET_SpV Fortran driver for roquet-spv truth
+  - pip
+  - pip:
+      - gsw==3.6.23
+      - fastjmd95==0.2.1
+      - momlevel==1.0.5
+      - seawater==3.3.5
+      - MITgcmutils==0.2.2
