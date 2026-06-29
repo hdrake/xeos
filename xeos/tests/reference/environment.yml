@@ -24,3 +24,4 @@ dependencies:
       - fastjmd95==0.2.1
       - momlevel==1.0.5
       - seawater==3.3.5
+      - MITgcmutils==0.2.2

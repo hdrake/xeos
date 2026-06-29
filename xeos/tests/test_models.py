@@ -13,10 +13,17 @@ from xeos.registry import list_eos
     ("MOM6", "WRIGHT_REDUCED", "wright97-reduced"),
     ("MOM6", "LINEAR", "linear"),
     ("MOM6", "ROQUET_RHO", "teos10-poly55"),
+    ("MOM6", "UNESCO", "unesco"),
+    ("MOM6", "JACKETT_MCD", "unesco"),
     ("MITgcm", "JMD95Z", "jmd95"),
     ("MITgcm", "JMD95P", "jmd95"),
+    ("MITgcm", "UNESCO", "unesco"),
+    ("MITgcm", "MDJWF", "mdjwf"),
     ("Oceananigans", "TEOS10EquationOfState", "teos10-poly55"),
     ("Oceananigans", "LinearEquationOfState", "linear"),
+    ("Oceananigans", "CABBELING", "roquet-cabbeling"),
+    ("Oceananigans", "SecondOrder", "roquet-second-order"),
+    ("Oceananigans", "SimplestRealistic", "roquet-simplest-realistic"),
 ])
 def test_selector_resolves(model, selector, expected):
     assert xeos.from_model(model, selector).id == expected

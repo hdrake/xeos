@@ -62,11 +62,23 @@ conversion helpers live in `xeos.conventions` (these need the `gsw` extra).
 
 ## Supported equations of state
 
-Phase 1 (implemented): linear, Wright 1997 (full & reduced range), Jackett &
-McDougall 1995, the Roquet 55-term TEOS-10 polynomial (Oceananigans /
-SeawaterPolynomials.jl), and full TEOS-10 via `gsw`. Further MOM6/MITgcm/Oceananigans
-schemes (UNESCO, Jackett 2006, MDJWF, the Roquet specific-volume and idealized
-forms, POLY3) are planned and slot into the same registry.
+`xeos.list_eos()` returns the current set. As of now:
+
+- **linear** — configurable (MOM6/MITgcm/Oceananigans `LINEAR`)
+- **wright97-full**, **wright97-reduced** — Wright 1997 (MOM6 `WRIGHT_FULL`, `WRIGHT`/`WRIGHT_RED`)
+- **jmd95** — Jackett & McDougall 1995 (MITgcm `JMD95Z`/`JMD95P`)
+- **unesco** — UNESCO/EOS-80 (MOM6 `UNESCO`/`JACKETT_MCD`, MITgcm `UNESCO`)
+- **mdjwf** — McDougall et al. 2003 (MITgcm `MDJWF`)
+- **teos10-poly55** — Roquet 55-term polynomial / TEOS-10 density form
+  (Oceananigans `TEOS10EquationOfState`, MOM6 `ROQUET_RHO`/`NEMO`)
+- **roquet-{linear,cabbeling,cabbeling-thermobaricity,freezing,second-order,simplest-realistic}**
+  — idealized second-order Roquet forms (Oceananigans `RoquetSeawaterPolynomial(:…)`)
+- **teos10** — full TEOS-10 via `gsw` (MOM6/MITgcm `TEOS10`)
+
+Not yet implemented (planned, slot into the same registry): MOM6 `JACKETT_06` and
+`WRIGHT` legacy-buggy, MOM6 `ROQUET_SPV` (deferred — its only Python reference is
+unreliable; the density form `ROQUET_RHO` is supported), and MITgcm `POLY3`
+(per-level runtime coefficients).
 
 ## Development
 

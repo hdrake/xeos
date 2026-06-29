@@ -35,9 +35,11 @@ The package is a small registry-and-facade design. Data flows:
   Backends self-register at import time.
 - **`backends/`** — one module per EOS; importing `backends/__init__.py`
   registers them all. Vendored kernels: `_linear`, `_wright` (full + reduced
-  coefficient sets, native pressure **Pa**), `_jmd95` (native **dbar**),
-  `_roquet` (55-term TEOS-10 polynomial, **dbar**≈depth). `_teos10` is a thin
-  lazy-`gsw` wrapper.
+  coefficient sets, native pressure **Pa**), `_jmd95` and `_unesco` (native
+  **dbar**; `_unesco` reuses `_jmd95._rho_surface`), `_mdjwf` (rational fit,
+  **dbar**), `_roquet` (55-term TEOS-10 density polynomial, **dbar**≈depth), and
+  `_roquet_idealized` (6 second-order Roquet forms via one factory, conservative
+  temp / absolute salinity, Z = −p). `_teos10` is a thin lazy-`gsw` wrapper.
 - **`eos.py`** — `EquationOfState` facade. Converts user pressure (default dbar)
   to each backend's native unit, dispatches via `xarray_utils.apply_eos`, and
   computes `alpha = -drho_dt/rho`, `beta = drho_ds/rho` from analytic derivatives,
@@ -67,6 +69,13 @@ import it in `backends/__init__.py`, and add its model selector strings to
   implements the *reduced*-range coefficients (= MOM6 `WRIGHT`/`WRIGHT_RED`), not
   `WRIGHT_FULL`; that is why the reference fixture validates `wright97-reduced`
   and `wright97-full` is checked structurally instead.
+- **`ROQUET_SPV` is deferred, not forgotten.** The only Python reference for the
+  specific-volume form (`polyTEOS10_55t`) disagrees with its own documented check
+  values, so it cannot be validated; do not add it from that source. The density
+  form (`teos10-poly55`) is correct and matches gsw.
+- **Not yet implemented:** MOM6 `JACKETT_06`, MOM6 `WRIGHT` legacy-buggy, MITgcm
+  `POLY3` (per-level runtime coefficients), MITgcm `IDEALGAS`. Add as new
+  `backends/_*.py` + selector entries when a trustworthy reference is available.
 
 ## Testing & reference truth
 

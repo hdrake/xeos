@@ -22,14 +22,21 @@ MODEL_SELECTORS = {
         "WRIGHT": "wright97-reduced",
         "WRIGHT_RED": "wright97-reduced",
         "WRIGHT_REDUCED": "wright97-reduced",
+        "UNESCO": "unesco",
+        "JACKETT_MCD": "unesco",
         "ROQUET_RHO": "teos10-poly55",
         "NEMO": "teos10-poly55",
+        # NOTE: ROQUET_SPV (specific-volume form) is deferred — the only available
+        # Python reference (polyTEOS10_55t) disagrees with its own check values,
+        # so it cannot yet be validated. ROQUET_RHO (density form) is supported.
         "TEOS10": "teos10",
     },
     "MITGCM": {
         "LINEAR": "linear",
+        "UNESCO": "unesco",
         "JMD95Z": "jmd95",
         "JMD95P": "jmd95",
+        "MDJWF": "mdjwf",
         "TEOS10": "teos10",
     },
     "OCEANANIGANS": {
@@ -38,6 +45,14 @@ MODEL_SELECTORS = {
         "TEOS10": "teos10-poly55",
         "TEOS10EQUATIONOFSTATE": "teos10-poly55",
         "TEOS10SEAWATERPOLYNOMIAL": "teos10-poly55",
+        # Idealized second-order Roquet forms, RoquetSeawaterPolynomial(:X).
+        "ROQUETLINEAR": "roquet-linear",
+        "LINEARROQUET": "roquet-linear",
+        "CABBELING": "roquet-cabbeling",
+        "CABBELINGTHERMOBARICITY": "roquet-cabbeling-thermobaricity",
+        "FREEZING": "roquet-freezing",
+        "SECONDORDER": "roquet-second-order",
+        "SIMPLESTREALISTIC": "roquet-simplest-realistic",
     },
 }
 

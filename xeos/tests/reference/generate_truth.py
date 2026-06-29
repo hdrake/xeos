@@ -12,10 +12,15 @@ Usage
     python generate_truth.py            # writes ./truth.json
 
 Reference packages -> backend validated:
-    fastjmd95           -> jmd95
-    momlevel.eos.wright -> wright97-reduced   (same functional form as -full)
-    polyTEOS10.py       -> teos10-poly55      (downloaded if absent)
-    gsw                 -> teos10
+    fastjmd95               -> jmd95
+    momlevel.eos.wright     -> wright97-reduced   (same functional form as -full)
+    polyTEOS10.py           -> teos10-poly55      (downloaded if absent)
+    gsw                     -> teos10
+    MITgcmutils.density     -> unesco, mdjwf
+
+The idealized second-order Roquet forms (roquet-linear, roquet-cabbeling, ...)
+have no standalone Python reference and are validated structurally in test_api.py
+(exact analytic derivatives vs finite differences; literal check values).
 
 The numbers fed to xeos and to each reference are identical; xeos performs no
 silent temperature/salinity conversion, so this is an apples-to-apples check.
@@ -59,6 +64,7 @@ def main():
     import gsw
     import fastjmd95
     from momlevel.eos import wright
+    from MITgcmutils import density as mitgcm_density
 
     _ensure_polyteos()
     import sys
@@ -100,6 +106,10 @@ def main():
         "beta": np.asarray(gsw.beta(s, t, p)).tolist(),
     }
 
+    # unesco / mdjwf (MITgcmutils.density): density(salt, theta, p_dbar)
+    cases["unesco"] = {"rho": np.asarray(mitgcm_density.unesco(s, t, p)).tolist()}
+    cases["mdjwf"] = {"rho": np.asarray(mitgcm_density.mdjwf(s, t, p)).tolist()}
+
     out = {
         "_README": "Frozen reference values; regenerate with generate_truth.py. "
                    "Inputs t,s,p fed identically to xeos and to each reference.",
@@ -109,6 +119,7 @@ def main():
                 "fastjmd95": _ver("fastjmd95"),
                 "momlevel": _ver("momlevel"),
                 "seawater": _ver("seawater"),
+                "MITgcmutils": _ver("MITgcmutils"),
                 "numpy": _ver("numpy"),
                 "polyTEOS10": POLYTEOS_URL,
             },
