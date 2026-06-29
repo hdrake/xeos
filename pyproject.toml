@@ -34,6 +34,9 @@ dependencies = [
 [project.optional-dependencies]
 # Full TEOS-10 (gsw is itself lightweight; only depends on numpy).
 teos10 = ["gsw"]
+# Everything an end user might want: full TEOS-10 (gsw) plus numba acceleration.
+# Advertised in the README as `pip install xeos[complete]`.
+complete = ["gsw", "numba"]
 # Test deps: pytest + gsw (so the TEOS-10 cases run) + dask (exercises the
 # dask-parallelized path). The reference packages that produce the frozen
 # fixtures are NOT here — see xeos/tests/reference/README.md.
