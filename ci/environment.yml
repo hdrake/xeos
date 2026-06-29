@@ -7,4 +7,8 @@ dependencies:
   - black
   - pylint
   - pytest
+  - numpy
+  - xarray
+  - dask          # exercises the dask-parallelized path in the tests
+  - gsw           # optional 'teos10' backend; lets the TEOS-10 cases run in CI
   - pip
