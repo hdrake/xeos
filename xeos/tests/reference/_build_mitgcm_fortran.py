@@ -13,10 +13,10 @@ The coefficients -- where cross-model drift and porting typos live -- come strai
 from ``ini_eos.F`` (downloaded on demand, not committed; only the numbers go into
 ``truth.json``). The polynomial/rational forms are transcribed line-for-line from
 ``find_rho.F`` (cited inline). Before any output is trusted, each driver self-checks
-its density at S=35, T=25, p=2000 dbar against a FROZEN external constant (``_CHECK``,
-the published JMD95/EOS-80/MDJWF density at that point) -- independent of this
-module's coefficient parse, so a parse that selects valid-but-wrong coefficients, a
-transcription slip, or an upstream change all fail loudly.
+its density at S=35, T=25, p=2000 dbar against a FROZEN reference constant
+(``_CHECK``) -- a fixed literal, independent of this module's coefficient parse, so a
+parse that selects valid-but-wrong coefficients, a transcription slip, or an upstream
+change all fail loudly (a check derived from the parsed coefficients could not).
 
 alpha/beta are produced by centred finite difference of the compiled density (the
 same h=1e-3 the facade uses for these FD-fallback backends), validating xeos's own
@@ -107,11 +107,12 @@ def _coefficients():
     }
 
 
-# External self-check anchors at (S=35, T=25, p=2000 dbar): in-situ density from
-# the published JMD95 / EOS-80 / MDJWF coefficients. These are FROZEN constants,
-# independent of this module's parse of ini_eos.F, so a parse that selects
-# valid-but-wrong coefficients makes the compiled Fortran miss them and fail loudly
-# (a numpy reference built from the *same* parsed coefficients could not catch that).
+# External self-check anchors: in-situ density at (S=35, T=25, p=2000 dbar). FROZEN
+# literals, independent of this module's parse of ini_eos.F -- so a parse that
+# selects valid-but-wrong coefficients makes the compiled Fortran miss them and fail
+# loudly (a numpy reference built from the *same* parsed coefficients could not). The
+# jmd95 value is the canonical published JMD95 check value; all three equal xeos's
+# independently-vendored jmd95/unesco/mdjwf kernels at this point to machine precision.
 _CHECK = {
     "jmd95": 1031.6521274959705,
     "unesco": 1031.7976768716112,
