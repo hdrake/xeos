@@ -34,7 +34,7 @@ and the idealized second-order Roquet forms (`roquet-linear`, `roquet-cabbeling`
 > **Note on `roquet-spv`:** the widely-used `polyTEOS10.py` reference is unusable
 > here — its `polyTEOS10_55t` routine has a `deltaS=32` typo (should be `24`) that
 > makes its specific-volume output disagree with its own published check values
-> (reported upstream). `roquet-spv` is therefore validated against MOM6's
+> (reported upstream: fabien-roquet/polyTEOS#2). `roquet-spv` is therefore validated against MOM6's
 > authoritative Fortran (`MOM_EOS_Roquet_SpV.F90`), compiled with gfortran. The
 > driver self-checks the published specvol value (9.732820466e-04 at SA=30, CT=10,
 > p=1000 dbar) before emitting truth, so upstream reformatting can't silently

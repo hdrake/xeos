@@ -11,8 +11,9 @@ Note on the salinity offset: the reduced salinity uses ``deltaS = 24`` (MOM6
 ``rdeltaS``; Roquet's Matlab ``polyTEOS10_55t.m``), NOT 32. The widely-circulated
 ``polyTEOS10.py`` reference has a typo (``deltaS = 32`` copied from the density
 form), which makes its specific-volume output disagree with its own published
-check values; do not use it as a reference. This backend is validated against the
-authoritative MOM6 Fortran (see xeos/tests/reference/).
+check values (reported upstream: fabien-roquet/polyTEOS#2); do not use it as a
+reference. This backend is validated against the authoritative MOM6 Fortran (see
+xeos/tests/reference/).
 
 State variables: conservative temperature [degC], absolute salinity [g/kg], sea
 pressure [dbar].
