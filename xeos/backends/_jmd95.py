@@ -4,7 +4,9 @@ Jackett, D.R. & T.J. McDougall (1995): "Minimal adjustment of hydrographic
 profiles to achieve static stability." J. Atmos. Oceanic Technol., 12, 381-389.
 
 Coefficients ported verbatim from the MITgcm reference implementation (also used
-by ``fastjmd95``).  State variables: potential temperature [degC], practical
+by ``fastjmd95``).  This same fit is what MOM6 calls ``UNESCO`` / ``JACKETT_MCD``
+(``MOM_EOS_UNESCO.F90``), so those MOM6 selectors resolve here too.  State
+variables: potential temperature [degC], practical
 salinity [PSU], sea pressure [dbar].  Density derivatives are left to the
 facade's centred finite-difference fallback (the reference analytic derivatives
 carry a known typo); the fallback is accurate to ~1e-6 (O(h^2) truncation).

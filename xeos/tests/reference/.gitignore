@@ -1,6 +1,17 @@
-# Third-party reference code downloaded/built on demand by generate_truth.py.
-# Only the resulting truth.json (frozen numbers) is committed.
+# Third-party reference code downloaded/built on demand by the _build_*.py
+# generators (MOM6 is LGPL, polyTEOS is MIT). Only the resulting truth.json
+# (frozen numbers) and the generator scripts themselves are committed.
+
+# Downloaded model source (MOM6 + MITgcm Fortran, Roquet's polyTEOS Python)
+MOM_EOS_*.F90
+ini_eos.F
+find_rho.F
 polyTEOS10.py
-MOM_EOS_Roquet_SpV.F90
-_roquet_spv_driver.f90
-_roquet_spv_driver
+
+# Generated Fortran drivers + compiled binaries
+_*_driver.f90
+_*_driver
+
+# Generated Julia driver + its isolated package environment
+_seawaterpolynomials_driver.jl
+_julia_env/

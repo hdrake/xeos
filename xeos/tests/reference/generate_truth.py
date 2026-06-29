@@ -11,16 +11,18 @@ Usage
 -----
     python generate_truth.py            # writes ./truth.json
 
-Reference packages -> backend validated:
-    fastjmd95               -> jmd95
-    momlevel.eos.wright     -> wright97-reduced   (same functional form as -full)
-    polyTEOS10.py           -> teos10-poly55      (downloaded if absent)
-    gsw                     -> teos10
-    MITgcmutils.density     -> unesco, mdjwf
+Reference -> backend validated:
+    MITgcm ini_eos.F + find_rho.F      -> jmd95, unesco, mdjwf (gfortran)
+    MOM6 MOM_EOS_Wright_{red,full}.F90 -> wright97-reduced, wright97-full (gfortran)
+    MOM6 MOM_EOS_UNESCO.F90            -> jmd95@mom6 (the MOM6 'UNESCO' = JMD95 fit)
+    MOM6 MOM_EOS_Roquet_SpV.F90        -> roquet-spv (gfortran)
+    SeawaterPolynomials.jl (Julia)     -> the six idealized roquet-* forms
+    polyTEOS10.py                      -> teos10-poly55      (downloaded if absent)
+    gsw                                -> teos10
 
-The idealized second-order Roquet forms (roquet-linear, roquet-cabbeling, ...)
-have no standalone Python reference and are validated structurally in test_api.py
-(exact analytic derivatives vs finite differences; literal check values).
+Model-source generators (compile MOM6 Fortran, run Oceananigans' Julia package)
+live in ``_build_*.py`` next to this script; they need gfortran and/or julia but
+emit only numbers, so the committed ``truth.json`` stays toolchain-free to consume.
 
 The numbers fed to xeos and to each reference are identical; xeos performs no
 silent temperature/salinity conversion, so this is an apples-to-apples check.
@@ -62,14 +64,17 @@ def _ensure_polyteos():
 
 def main():
     import gsw
-    import fastjmd95
-    from momlevel.eos import wright
-    from MITgcmutils import density as mitgcm_density
 
     _ensure_polyteos()
     import sys
     sys.path.insert(0, HERE)
     import polyTEOS10
+    # Model-source generators (compile MOM6/MITgcm Fortran / run Oceananigans Julia).
+    from _build_wright_fortran import wright_truth
+    from _build_unesco_fortran import unesco_mom6_truth
+    from _build_mitgcm_fortran import mitgcm_truth
+    from _build_seawaterpolynomials_julia import (
+        seawaterpolynomials_truth, julia_version)
 
     tt, ss, pp = (np.array(v, dtype=float) for v in np.meshgrid(
         T_VALS, S_VALS, P_VALS, indexing="ij"))
@@ -79,32 +84,26 @@ def main():
 
     cases = {}
 
-    def fd_alpha_beta(densfunc, ss, tt, pp, h=1.0e-3):
-        """alpha/beta by centred difference of an independent reference density.
+    # jmd95 / unesco / mdjwf: MITgcm's own Fortran -- coefficients parsed verbatim
+    # from model/src/ini_eos.F, density formulas from model/src/find_rho.F, compiled
+    # with gfortran (replaces the fastjmd95 / MITgcmutils Python ports). alpha/beta
+    # by centred FD of the compiled density (matching xeos's FD-fallback path).
+    mitgcm = mitgcm_truth(s, t, p)
+    if mitgcm is not None:
+        cases.update(mitgcm)
+    else:
+        print("WARNING: gfortran not found; jmd95/unesco/mdjwf truth not regenerated.")
 
-        Uses the same step the facade uses, so xeos's own finite-difference path
-        is validated against a *different* density implementation (catches sign /
-        unit mistakes in that path). densfunc signature is (salt, theta, p_dbar).
-        """
-        rho0 = np.asarray(densfunc(ss, tt, pp))
-        a = -(np.asarray(densfunc(ss, tt + h, pp))
-              - np.asarray(densfunc(ss, tt - h, pp))) / (2.0 * h) / rho0
-        b = (np.asarray(densfunc(ss + h, tt, pp))
-             - np.asarray(densfunc(ss - h, tt, pp))) / (2.0 * h) / rho0
-        return a.tolist(), b.tolist()
-
-    # jmd95 (fastjmd95): rho(s, t, p_dbar)
-    jmd95_a, jmd95_b = fd_alpha_beta(fastjmd95.rho, s, t, p)
-    cases["jmd95"] = {"rho": fastjmd95.rho(s, t, p).tolist(),
-                      "alpha": jmd95_a, "beta": jmd95_b}
-
-    # wright97-reduced (momlevel): density(T, S, p_Pa)
-    p_pa = p * 1.0e4
-    cases["wright97-reduced"] = {
-        "rho": np.asarray(wright.density(t, s, p_pa)).tolist(),
-        "alpha": np.asarray(wright.alpha(t, s, p_pa)).tolist(),
-        "beta": np.asarray(wright.beta(t, s, p_pa)).tolist(),
-    }
+    # wright97-reduced / wright97-full: MOM6 Fortran (MOM_EOS_Wright_{red,full}.F90),
+    # compiled with gfortran. This replaces the momlevel Python port (which only
+    # implements the reduced-range coefficients) and gives wright97-full its first
+    # numeric truth. rho + analytic alpha/beta straight from the model source.
+    for variant, wright_id in (("red", "wright97-reduced"), ("full", "wright97-full")):
+        wt = wright_truth(variant, s, t, p)
+        if wt is not None:
+            cases[wright_id] = wt
+        else:
+            print(f"WARNING: gfortran not found; {wright_id} truth not regenerated.")
 
     # teos10-poly55 (polyTEOS10_bsq): (SA, CT, p_dbar) -> rho, a=-dr/dCT, b=dr/dSA
     rho_p, a_p, b_p, _, _ = polyTEOS10.polyTEOS10_bsq(s, t, p)
@@ -132,13 +131,22 @@ def main():
     else:
         print("WARNING: gfortran not found; roquet-spv truth not regenerated.")
 
-    # unesco / mdjwf (MITgcmutils.density): density(salt, theta, p_dbar)
-    unesco_a, unesco_b = fd_alpha_beta(mitgcm_density.unesco, s, t, p)
-    cases["unesco"] = {"rho": np.asarray(mitgcm_density.unesco(s, t, p)).tolist(),
-                       "alpha": unesco_a, "beta": unesco_b}
-    mdjwf_a, mdjwf_b = fd_alpha_beta(mitgcm_density.mdjwf, s, t, p)
-    cases["mdjwf"] = {"rho": np.asarray(mitgcm_density.mdjwf(s, t, p)).tolist(),
-                      "alpha": mdjwf_a, "beta": mdjwf_b}
+    # Idealized second-order Roquet forms: evaluated by SeawaterPolynomials.jl
+    # (the Julia package Oceananigans uses). First numeric truth for these six
+    # backends, which were previously validated structurally only.
+    swp = seawaterpolynomials_truth(s, t, p)
+    if swp is not None:
+        cases.update(swp)
+    else:
+        print("WARNING: julia not found; idealized Roquet truth not regenerated.")
+
+    # MOM6 'UNESCO'/'JACKETT_MCD' is, despite the name, the Jackett & McDougall
+    # (1995) fit -- i.e. the jmd95 kernel. Validate jmd95 against MOM6 Fortran too,
+    # a second model source besides MITgcm's own (above). The "backend" field tells
+    # test_backends.py which kernel this case validates.
+    unesco_mom6 = unesco_mom6_truth(s, t, p)
+    if unesco_mom6 is not None:
+        cases["jmd95@mom6"] = {"backend": "jmd95", **unesco_mom6}
 
     out = {
         "_README": "Frozen reference values; regenerate with generate_truth.py. "
@@ -146,14 +154,21 @@ def main():
         "provenance": {
             "reference_versions": {
                 "gsw": _ver("gsw"),
-                "fastjmd95": _ver("fastjmd95"),
-                "momlevel": _ver("momlevel"),
-                "seawater": _ver("seawater"),
-                "MITgcmutils": _ver("MITgcmutils"),
                 "numpy": _ver("numpy"),
                 "polyTEOS10": POLYTEOS_URL,
-                "gfortran (roquet-spv)": gfortran_version(),
-                "MOM_EOS_Roquet_SpV.F90": "github.com/mom-ocean/MOM6 main",
+                "gfortran": gfortran_version(),
+                "julia": julia_version(),
+                # Model source compiled/run on demand (LGPL/MIT; not committed):
+                "ini_eos.F + find_rho.F (jmd95, unesco, mdjwf)":
+                    "github.com/MITgcm/MITgcm master",
+                "MOM_EOS_Wright_red.F90 / _full.F90 (wright97-*)":
+                    "github.com/mom-ocean/MOM6 main",
+                "MOM_EOS_UNESCO.F90 (jmd95@mom6)":
+                    "github.com/mom-ocean/MOM6 main",
+                "MOM_EOS_Roquet_SpV.F90 (roquet-spv)":
+                    "github.com/mom-ocean/MOM6 main",
+                "SeawaterPolynomials.jl (roquet-* idealized)":
+                    "github.com/CliMA/SeawaterPolynomials.jl",
             },
             "grid": {"T": T_VALS, "S": S_VALS, "P_dbar": P_VALS},
         },

@@ -22,8 +22,13 @@ MODEL_SELECTORS = {
         "WRIGHT": "wright97-reduced",
         "WRIGHT_RED": "wright97-reduced",
         "WRIGHT_REDUCED": "wright97-reduced",
-        "UNESCO": "unesco",
-        "JACKETT_MCD": "unesco",
+        # MOM6's "UNESCO" is, despite the name, the Jackett & McDougall (1995)
+        # potential-temperature fit -- byte-for-byte the JMD95 kernel, NOT the
+        # original Fofonoff & Millard EOS-80 (that is xeos's `unesco`, = MITgcm's
+        # UNESCO). Verified to machine precision against MOM_EOS_UNESCO.F90; the
+        # two differ by up to ~0.4 kg/m3. See reference/_build_unesco_fortran.py.
+        "UNESCO": "jmd95",
+        "JACKETT_MCD": "jmd95",
         "ROQUET_RHO": "teos10-poly55",
         "NEMO": "teos10-poly55",
         "ROQUET_SPV": "roquet-spv",

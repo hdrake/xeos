@@ -1,9 +1,14 @@
 """UNESCO / EOS-80 equation of state (Fofonoff & Millard, 1983).
 
-The international (UNESCO 1981) EOS-80 polynomial, as used by MOM6 ``UNESCO`` /
-``JACKETT_MCD`` and MITgcm ``eosType='UNESCO'``.  It shares the surface-density
-polynomial with JMD95 but uses a distinct secant bulk modulus.  Coefficients
-ported from the MITgcm reference implementation (``MITgcmutils.density.unesco``).
+The international (UNESCO 1981) EOS-80 polynomial, as used by MITgcm
+``eosType='UNESCO'``.  It shares the surface-density polynomial with JMD95 but
+uses a distinct secant bulk modulus.  Coefficients ported from the MITgcm
+reference implementation (``MITgcmutils.density.unesco``).
+
+Note: MOM6's ``EQN_OF_STATE='UNESCO'`` (and ``'JACKETT_MCD'``) is *not* this EOS --
+it is the Jackett & McDougall (1995) potential-temperature fit, i.e. xeos's
+``jmd95`` backend (verified to machine precision against ``MOM_EOS_UNESCO.F90``;
+the two differ by up to ~0.4 kg/m3).  Those MOM6 selectors resolve to ``jmd95``.
 
 State variables: potential temperature [degC], practical salinity [PSU], sea
 pressure [dbar].

@@ -67,10 +67,15 @@ import it in `backends/__init__.py`, and add its model selector strings to
 ### Critical gotchas
 - **Pressure units differ per backend** (Wright = Pa, JMD95/Roquet/gsw = dbar);
   the facade converts, so a kernel always receives its declared native unit.
-- **Wright variants share one formula, differ only in coefficients.** `momlevel`
-  implements the *reduced*-range coefficients (= MOM6 `WRIGHT`/`WRIGHT_RED`), not
-  `WRIGHT_FULL`; that is why the reference fixture validates `wright97-reduced`
-  and `wright97-full` is checked structurally instead.
+- **Wright variants share one formula, differ only in coefficients.** Both
+  `wright97-reduced` (MOM6 `WRIGHT`/`WRIGHT_RED`) and `wright97-full`
+  (`WRIGHT_FULL`) are validated against MOM6 Fortran (`MOM_EOS_Wright_{red,full}.F90`).
+- **MOM6 `UNESCO`/`JACKETT_MCD` is the JMD95 fit, NOT EOS-80.** Despite the name,
+  `MOM_EOS_UNESCO.F90` is the Jackett & McDougall (1995) potential-temp fit —
+  byte-for-byte xeos's `jmd95` (verified to machine precision), differing from the
+  original Fofonoff & Millard EOS-80 (xeos's `unesco`, = MITgcm `UNESCO`) by up to
+  ~0.4 kg/m³. So those MOM6 selectors resolve to `jmd95` in `models.py`; the
+  `jmd95@mom6` truth case pins the equivalence.
 - **`ROQUET_SPV` uses `deltaS=24`, NOT 32.** The widely-used `polyTEOS10.py`
   reference has a typo in its `polyTEOS10_55t` routine (`deltaS=32`, copied from the
   density form), making its specific-volume output disagree with its own published
@@ -84,14 +89,21 @@ import it in `backends/__init__.py`, and add its model selector strings to
 ## Testing & reference truth
 
 `test_backends.py` validates each vendored kernel against frozen values in
-`xeos/tests/reference/truth.json`. Those values are generated from authoritative
-reference packages (`gsw`, `fastjmd95`, `momlevel`, `polyTEOS10`) by
-`xeos/tests/reference/generate_truth.py` in a **separate pinned environment**
-(`xeos/tests/reference/environment.yml`) — kept apart precisely because some
-references (momlevel) are heavyweight and intentionally excluded from xeos's
-runtime deps. The committed `truth.json` is stamped with the exact reference
-versions used; the regular test suite reads it and needs none of those packages.
-Regenerate via `xeos/tests/reference/README.md` and commit the updated JSON.
+`xeos/tests/reference/truth.json`. **Preferred truth source is the model's own
+source code**, not a third-party Python port: MITgcm Fortran (`jmd95`, `unesco`,
+`mdjwf` — coefficients parsed from `ini_eos.F`, formulas from `find_rho.F`) and
+MOM6 Fortran (`wright97-*`, `jmd95@mom6`, `roquet-spv`) compiled with gfortran, plus
+Oceananigans' `SeawaterPolynomials.jl` run via Julia (the six idealized `roquet-*`
+forms); `gsw` is the accepted exception for `teos10`. The `_build_*.py` generators
+download/compile/run those sources on demand (each self-checks a value first) and
+emit only numbers, so the committed `truth.json` stays toolchain-free to consume.
+A truth case may set a `"backend"` field to validate one kernel against multiple
+model sources (e.g. `jmd95@mom6` → the `jmd95` backend, which is *also* validated
+against MITgcm's own Fortran). Only `polyTEOS10.py` (→ `teos10-poly55`) remains a
+Python-port reference; `gsw` is canonical. All run in a **separate pinned env**
+(`xeos/tests/reference/environment.yml`: gfortran + julia + gsw); the regular suite
+reads only `truth.json`. Regenerate via `xeos/tests/reference/README.md` and commit
+the updated JSON.
 
 ## Versioning
 
