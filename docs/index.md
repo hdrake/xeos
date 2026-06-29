@@ -11,7 +11,7 @@ own selector string** — and apply it to xarray/dask data through one uniform A
 
 It stays lightweight on purpose: the polynomial/rational equations of state are
 vendored as small numpy kernels, so the core install needs only **numpy + xarray**.
-Full TEOS-10 (via `gsw`) is an optional extra.
+TEOS-10 (via `gsw`) is an optional extra.
 
 ```python
 import xeos

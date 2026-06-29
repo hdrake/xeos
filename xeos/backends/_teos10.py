@@ -1,10 +1,17 @@
-"""Full TEOS-10 equation of state, delegated to the optional ``gsw`` library.
+"""TEOS-10 equation of state, delegated to the optional ``gsw`` library.
 
-IOC, SCOR & IAPSO (2010); McDougall & Barker (2011), GSW Oceanographic Toolbox.
+This calls ``gsw.rho`` / ``gsw.rho_first_derivatives``, which evaluate the
+**75-term polynomial** approximation to TEOS-10 (Roquet et al., 2015, Ocean
+Modelling 90) that GSW uses as its standard, computationally-efficient
+implementation — NOT the exact Gibbs function (that is ``gsw.rho_t_exact``). It is
+accurate to ~1e-3 kg m-3 within the oceanographic "funnel" and is what most
+analysis code, and the MOM6/MITgcm ``TEOS10`` options, mean by "TEOS-10 density".
+Relative to the vendored ``teos10-poly55`` (the 55-term Roquet *density* fit), this
+is the 75-term *specific-volume* fit of the same TEOS-10 target.
 
-This is the only backend that is not vendored: the full Gibbs-function TEOS-10
-standard is large and authoritatively implemented by ``gsw`` (whose only
-dependency is numpy).  ``gsw`` is an optional extra — install ``xeos[teos10]``.
+Underlying standard: IOC/SCOR/IAPSO (2010); McDougall & Barker (2011), GSW toolbox.
+``gsw`` is an optional extra (its only dependency is numpy) — install
+``xeos[teos10]``.
 
 State variables: conservative temperature [degC], absolute salinity [g/kg],
 sea pressure [dbar].
@@ -47,6 +54,8 @@ register(EOSBackend(
     temperature=TemperatureKind.CONSERVATIVE,
     salinity=SalinityKind.ABSOLUTE,
     pressure_unit=PressureUnit.DBAR,
-    reference="IOC/SCOR/IAPSO (2010); McDougall & Barker (2011), GSW toolbox.",
-    description="Full TEOS-10 via the gsw library (MOM6/MITgcm TEOS10).",
+    reference="gsw 75-term polynomial: Roquet et al. (2015), Ocean Modelling 90. "
+              "TEOS-10 standard: IOC/SCOR/IAPSO (2010); McDougall & Barker (2011).",
+    description="TEOS-10 via gsw's 75-term Roquet polynomial (MOM6/MITgcm TEOS10); "
+                "not the exact Gibbs function.",
 ))

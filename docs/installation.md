@@ -5,7 +5,7 @@
 
 ```bash
 pip install xeos              # core (numpy + xarray): all vendored EOS
-pip install xeos[teos10]      # adds full TEOS-10 via gsw
+pip install xeos[teos10]      # adds TEOS-10 via gsw
 pip install xeos[complete]    # gsw + numba acceleration
 ```
 

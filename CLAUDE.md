@@ -8,8 +8,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Equations of State (EOS), so analysts can apply the *same* EOS their ocean-model
 run used (MOM6, Oceananigans, MITgcm) — selected by the model's own selector
 string. The polynomial/rational EOS are vendored as numpy kernels; core runtime
-deps are **numpy + xarray only**. Full TEOS-10 is delegated to the optional `gsw`
-extra (`pip install xeos[teos10]`).
+deps are **numpy + xarray only**. TEOS-10 is delegated to the optional `gsw` extra
+(`pip install xeos[teos10]`) — note `gsw.rho` is itself the Roquet 75-term
+polynomial, not the exact Gibbs function (which is `gsw.rho_t_exact`).
 
 ## Commands
 

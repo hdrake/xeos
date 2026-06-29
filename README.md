@@ -11,13 +11,13 @@ own selector string** — and apply it to xarray/dask data through one uniform A
 
 It stays lightweight on purpose: the polynomial/rational equations of state are
 vendored as small numpy kernels, so the core install needs only **numpy + xarray**.
-Full TEOS-10 (via `gsw`) is an optional extra.
+TEOS-10 (via `gsw`) is an optional extra.
 
 ## Install
 
 ```bash
 pip install xeos              # core (numpy + xarray): all vendored EOS
-pip install xeos[teos10]      # adds full TEOS-10 via gsw
+pip install xeos[teos10]      # adds TEOS-10 via gsw
 pip install xeos[complete]    # gsw + numba acceleration
 ```
 
@@ -74,7 +74,8 @@ conversion helpers live in `xeos.conventions` (these need the `gsw` extra).
 - **roquet-spv** — Roquet 55-term specific-volume form (MOM6 `ROQUET_SPV`)
 - **roquet-{linear,cabbeling,cabbeling-thermobaricity,freezing,second-order,simplest-realistic}**
   — idealized second-order Roquet forms (Oceananigans `RoquetSeawaterPolynomial(:…)`)
-- **teos10** — full TEOS-10 via `gsw` (MOM6/MITgcm `TEOS10`)
+- **teos10** — TEOS-10 via `gsw` (its 75-term Roquet polynomial, not the exact
+  Gibbs function; MOM6/MITgcm `TEOS10`)
 
 Not yet implemented (planned, slot into the same registry): MOM6 `JACKETT_06` and
 `WRIGHT` legacy-buggy, and MITgcm `POLY3` (per-level runtime coefficients).
