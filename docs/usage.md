@@ -65,6 +65,44 @@ eos.salinity      # SalinityKind.ABSOLUTE
 - **mdjwf** — McDougall et al. 2003 (MITgcm `MDJWF`)
 - **teos10-poly55** — Roquet 55-term polynomial / TEOS-10 density form
   (Oceananigans `TEOS10EquationOfState`, MOM6 `ROQUET_RHO`/`NEMO`)
+- **roquet-spv** — Roquet 55-term specific-volume form (MOM6 `ROQUET_SPV`)
 - **roquet-{linear,cabbeling,cabbeling-thermobaricity,freezing,second-order,simplest-realistic}**
   — idealized second-order Roquet forms (Oceananigans `RoquetSeawaterPolynomial(:…)`)
-- **teos10** — full TEOS-10 via `gsw` (MOM6/MITgcm `TEOS10`)
+- **teos10** — TEOS-10 via `gsw` (MOM6/MITgcm `TEOS10`). See the note below: this
+  is itself the Roquet 75-term polynomial, not the exact Gibbs function.
+
+## The TEOS-10 / Roquet family
+
+"Roquet's EOS" refers to two very different things, and `xeos` ships both. Neither
+is a different *thermodynamics* from TEOS-10 — they are polynomial **fits** to it.
+
+| EOS | What it is | Accuracy vs TEOS-10 |
+|-----|------------|---------------------|
+| canonical TEOS-10 (Gibbs function) | density as a derivative of one thermodynamic potential `g(SA, T, p)`; globally valid but expensive. `gsw`'s `*_t_exact` routines. | exact (the standard) |
+| `teos10` (`gsw.rho`) | the **75-term** Roquet specific-volume polynomial — what GSW actually uses by default | ~10⁻³ kg m⁻³ inside the "oceanographic funnel" |
+| `teos10-poly55` | the **55-term** Roquet density polynomial (`bsq` form) | ~10⁻²–10⁻³ kg m⁻³ |
+| `roquet-spv` | the **55-term** Roquet *specific-volume* polynomial (non-Boussinesq MOM6) | ~10⁻²–10⁻³ kg m⁻³ |
+| `roquet-{linear,cabbeling,…}` | deliberately simplified ≤2nd-order forms that isolate one nonlinear effect (cabbeling, thermobaricity) for process studies | crude by design — not meant to be accurate |
+
+```{important}
+What `xeos` (and most analysis code) calls "full TEOS-10" via `gsw.rho` is **already
+a Roquet polynomial** — the 75-term specific-volume fit of Roquet et al. (2015),
+adopted by GSW as its standard fast implementation. The genuinely exact
+Gibbs-function density is `gsw.rho_t_exact`. So the practical difference between
+`teos10` and `teos10-poly55` is just **75-term vs 55-term** fits of the same target,
+agreeing to ~10⁻² kg m⁻³ — not "exact vs approximate".
+```
+
+The accurate polynomials (`teos10*`, `roquet-spv`) use conservative temperature and
+absolute salinity, are fitted only inside the realistic T–S–p "funnel", and are
+~10× cheaper than the Gibbs function (no transcendentals) — which is why ocean
+models use them. The idealized forms trade nearly all accuracy for interpretability
+and should only be used to reproduce a run that itself used them.
+
+### References
+
+- Roquet, Madec, McDougall & Barker (2015), *Ocean Modelling* **90**, 29–43 — the
+  accurate 55-/75-term polynomials (`teos10`, `teos10-poly55`, `roquet-spv`).
+- Roquet, Madec, McDougall & Barker (2015), *J. Phys. Oceanogr.* **45**, 2564–2579 —
+  the idealized simplified forms (`roquet-{linear,cabbeling,…}`).
+- IOC, SCOR & IAPSO (2010); McDougall & Barker (2011) — the TEOS-10 standard / GSW.
