@@ -12,10 +12,13 @@ float32 vs float64 / dask vs eager).
 import numpy as np
 import pytest
 import xarray as xr
-from hypothesis import given, settings
-from hypothesis import strategies as st
 
-import xeos
+pytest.importorskip("hypothesis")  # optional [test] dep; skip module if absent
+
+from hypothesis import given, settings  # noqa: E402
+from hypothesis import strategies as st  # noqa: E402
+
+import xeos  # noqa: E402
 
 try:  # teos10 needs the optional gsw extra
     import gsw  # noqa: F401

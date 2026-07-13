@@ -3,6 +3,8 @@ name: Docs
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 # Allow the GITHUB_TOKEN to deploy to GitHub Pages.
@@ -32,14 +34,26 @@ jobs:
       - name: Build HTML docs
         run: sphinx-build -W --keep-going -b html docs docs/_build/html
 
+      # Downloadable preview on every run (incl. PRs): grab the "docs-html"
+      # artifact from this job's summary to view the rendered docs for the PR.
+      - name: Upload docs preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-html
+          path: docs/_build/html
+
+      # Pages deployment only applies to main; skip on pull requests.
       - uses: actions/configure-pages@v5
+        if: github.event_name != 'pull_request'
 
       - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
         with:
           path: docs/_build/html
 
   deploy:
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

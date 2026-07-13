@@ -51,6 +51,13 @@ jobs:
       - name: Editable install
         run: python -m pip install -e .
 
+      # Optional accelerate=True fast path. numba lacks builds for the newest
+      # Python versions, so install it best-effort: where unavailable, test_accel.py
+      # skips via pytest.importorskip("numba").
+      - name: Install numba (best-effort; accel tests skip if unavailable)
+        continue-on-error: true
+        run: python -m pip install numba
+
       - name: Environment info
         run: |
           conda env list
