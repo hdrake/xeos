@@ -9,11 +9,31 @@ result.  Otherwise the kernel is called directly on the (broadcast) arrays.
 import numpy as np
 import xarray as xr  # hard runtime dependency
 
+try:  # soft dependency: keep bare dask arrays lazy when present
+    import dask.array as da
+except ImportError:  # pragma: no cover - dask is optional
+    da = None
+
 __all__ = ["apply_eos"]
 
 
 def _is_dataarray(obj):
     return isinstance(obj, xr.DataArray)
+
+
+def _coerce(arg):
+    """Coerce a non-DataArray arg for direct kernel evaluation.
+
+    Scalars pass through as scalars; bare :class:`dask.array.Array` inputs pass
+    through unchanged (the kernels use only numpy arithmetic + ``np.sqrt``, which
+    dask arrays support, so the result stays lazy); everything else is coerced to
+    a float numpy array.
+    """
+    if np.isscalar(arg):
+        return arg
+    if da is not None and isinstance(arg, da.Array):
+        return arg
+    return np.asarray(arg, dtype=float)
 
 
 def apply_eos(func, *args, attrs=None):
@@ -35,4 +55,4 @@ def apply_eos(func, *args, attrs=None):
         if attrs:
             result = result.assign_attrs(attrs)
         return result
-    return func(*[a if np.isscalar(a) else np.asarray(a, dtype=float) for a in args])
+    return func(*[_coerce(a) for a in args])
