@@ -95,7 +95,9 @@ def test_cross_mode_parity(eos_id):
     scalar = float(eos.rho(float(t2[0, 0]), float(s2[0, 0]), float(p2[0, 0])))
     np.testing.assert_allclose(scalar, r2[0, 0], rtol=1e-12, atol=1e-12)
 
-    # DataArray float32 vs float64 (loose tol -- reduced precision)
+    # DataArray float32 vs float64: a smoke test that the float32 path runs and
+    # roughly agrees, NOT correctness coverage -- atol=1e-2 kg/m^3 here exceeds
+    # some of the inter-EOS differences xeos exists to distinguish.
     dims = ("y", "x")
     r32 = eos.rho(xr.DataArray(t2.astype(np.float32), dims=dims),
                   xr.DataArray(s2.astype(np.float32), dims=dims),

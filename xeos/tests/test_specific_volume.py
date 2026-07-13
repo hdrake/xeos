@@ -2,7 +2,8 @@
 
 * fallback path (every backend except ``roquet-spv``): rho * v == 1 to machine
   precision, since v is computed as 1/rho;
-* ``roquet-spv`` ships an *analytic* specific volume -- check it equals 1/rho;
+* ``roquet-spv`` ships an *analytic* specific volume -- check that path stays
+  wired (its numerical accuracy is validated transitively via the density truth);
 * ``teos10``: parity of the facade's specific volume against gsw's own specvol.
 """
 
@@ -38,8 +39,21 @@ def test_rho_times_v_is_one_fallback(eos_id):
     np.testing.assert_allclose(rho * v, 1.0, rtol=1e-12, atol=1e-12)
 
 
-def test_roquet_spv_analytic_specvol_matches_reciprocal():
-    """roquet-spv provides an analytic specific volume; it must equal 1/rho."""
+def test_roquet_spv_uses_analytic_specvol_path():
+    """roquet-spv must expose an *analytic* specific volume, not the 1/rho fallback.
+
+    ``v == 1/rho`` is an identity for this backend by construction (its density
+    is defined as ``1/_specific_volume``), so it cannot on its own validate the
+    specvol polynomial -- the numerical validation is transitive through the
+    frozen ``roquet-spv`` density truth in ``truth.json`` (test_backends).  What
+    this test *does* guard is that the analytic specvol kernel stays wired into
+    the facade (a regression to the ``1/rho`` fallback would silently drop the
+    native specific-volume form MOM6's ``ROQUET_SPV`` actually uses).
+    """
+    from xeos.registry import get_backend
+
+    assert get_backend("roquet-spv").specific_volume is not None, (
+        "roquet-spv lost its analytic specific-volume kernel")
     eos = xeos.equation_of_state("roquet-spv")
     t, s, p = _mesh()
     rho = np.asarray(eos.rho(t, s, p))

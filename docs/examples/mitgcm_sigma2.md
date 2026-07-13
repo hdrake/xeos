@@ -138,7 +138,12 @@ print(f"TEOS-10 minus JMD95:    {float(diff.min()):.4f} .. "
 
 The two σ₂ fields agree to a few hundredths of a kg m⁻³. That is small — but not
 negligible: it is the same order as the density contrast across a weak front,
-and being *systematic* it does not average away. Let us look at where it lives.
+and being *systematic* it does not average away. Note that this Δσ₂ is not purely
+the EOS *formula*: because each EOS is evaluated with its own conventions, part of
+the signal is the practical-to-absolute salinity offset (Sₐ ≈ Sₚ + ~0.16 g kg⁻¹)
+that TEOS-10 requires. That is exactly the point — reproducing a diagnostic
+faithfully means pairing each EOS with the salinity/temperature variables it
+expects, not mixing them. Let us look at where the difference lives.
 
 ```{code-cell} ipython3
 # Surface layer (Z index 0), single time snapshot.

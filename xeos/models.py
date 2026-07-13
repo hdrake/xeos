@@ -7,6 +7,8 @@ matching ``xeos`` equation of state, so post-processing uses the same EOS the
 simulation did.
 """
 
+import warnings
+
 from .eos import EquationOfState
 from .registry import get_backend, list_eos
 from .backends._linear import make_linear
@@ -70,6 +72,21 @@ MODEL_SELECTORS = {
         "SECONDORDER": "roquet-second-order",
         "SIMPLESTREALISTIC": "roquet-simplest-realistic",
     },
+}
+
+# Selectors that xeos resolves to a *different* (usually bug-corrected) kernel
+# than the one the model's own run may have used.  We still resolve them for
+# convenience, but warn -- honouring xeos's "no silent EOS substitution"
+# contract, keyed by (canonical model, normalised selector).
+_SELECTOR_NOTES = {
+    ("MOM6", "WRIGHT"): (
+        "MOM6 'WRIGHT' resolves to xeos 'wright97-reduced', the *corrected* "
+        "reduced-coefficient Wright (1997) fit. MOM6's legacy 'WRIGHT' selector "
+        "runs the uncorrected MOM_EOS_Wright.F90, which can differ from this; "
+        "that legacy-buggy kernel is not yet vendored in xeos. Use "
+        "'WRIGHT_REDUCED' (or 'WRIGHT_RED') to select the corrected kernel "
+        "without this warning."
+    ),
 }
 
 # Friendly model-name aliases.
@@ -157,6 +174,9 @@ def from_model(model, selector, pressure_input_unit="dbar", accelerate=False, **
             f"Supported (this xeos version): {', '.join(sorted(table))}."
         )
     eos_id = table[key]
+    note = _SELECTOR_NOTES.get((model_key, key))
+    if note is not None:
+        warnings.warn(note, UserWarning, stacklevel=2)
     # Validate the backend exists (guards against typos in the selector table).
     get_backend(eos_id)
     return equation_of_state(

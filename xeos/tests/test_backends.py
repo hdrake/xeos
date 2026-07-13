@@ -67,3 +67,19 @@ def test_provenance_present():
     # one would stamp null here, flagging that those cases were left stale).
     assert versions["gfortran"]
     assert versions["julia"]
+
+
+def test_roquet_delta_s_constants_are_not_unified():
+    """Pin the single most bug-prone constant in the package.
+
+    The Roquet reduced-salinity offset is ``deltaS = 32`` in the *density* form
+    but ``deltaS = 24`` in the *specific-volume* form (the widely-copied
+    ``polyTEOS10.py`` uses 32 in both, which is a known upstream typo -- see
+    ``_roquet_spv.py``). A well-meaning "cleanup" that unified them would break
+    ``roquet-spv`` silently for most inputs; the ``@mom6``/SpV truth cases would
+    also catch it, but this is cheap, targeted insurance that reads at a glance.
+    """
+    from xeos.backends import _roquet, _roquet_spv
+
+    assert _roquet._dS == 32.0, "roquet density deltaS must stay 32"
+    assert _roquet_spv._dS == 24.0, "roquet-spv deltaS must stay 24 (NOT 32)"

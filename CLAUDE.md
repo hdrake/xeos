@@ -70,8 +70,12 @@ import it in `backends/__init__.py`, and add its model selector strings to
 - **Pressure units differ per backend** (Wright = Pa, JMD95/Roquet/gsw = dbar);
   the facade converts, so a kernel always receives its declared native unit.
 - **Wright variants share one formula, differ only in coefficients.** Both
-  `wright97-reduced` (MOM6 `WRIGHT`/`WRIGHT_RED`) and `wright97-full`
+  `wright97-reduced` (MOM6 `WRIGHT_RED`/`WRIGHT_REDUCED`) and `wright97-full`
   (`WRIGHT_FULL`) are validated against MOM6 Fortran (`MOM_EOS_Wright_{red,full}.F90`).
+  The bare MOM6 `WRIGHT` selector resolves to `wright97-reduced` **with a
+  `UserWarning`** (`_SELECTOR_NOTES` in `models.py`): that is the *corrected*
+  reduced fit, whereas MOM6's legacy `WRIGHT` runs the uncorrected
+  `MOM_EOS_Wright.F90` (the "legacy-buggy" kernel below, not yet vendored).
 - **MOM6 `UNESCO`/`JACKETT_MCD` is the JMD95 fit, NOT EOS-80.** Despite the name,
   `MOM_EOS_UNESCO.F90` is the Jackett & McDougall (1995) potential-temp fit —
   byte-for-byte xeos's `jmd95` (verified to machine precision), differing from the

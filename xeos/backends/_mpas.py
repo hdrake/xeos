@@ -101,5 +101,8 @@ register(EOSBackend(
     description=("Wright (1997) reduced-range coefficients (Table 1, last column); "
                  "identical kernel to xeos 'wright97-reduced'. MPAS-O clamps T,S and "
                  "uses Boussinesq pressure p=-rho0*g*z (documented; not applied here)."),
+    # This is the generic Wright-reduced envelope, NOT MPAS-O's own runtime clamp
+    # (config_eos_wright_{min,max}_{t,s} default to T in [-3, 30], S in [28, 38]);
+    # a modeller reproducing an MPAS-O run should expect those tighter bounds.
     valid_range={"t": (-2.0, 40.0), "s": (0.0, 40.0), "p_dbar": (0.0, 10000.0)},
 ))

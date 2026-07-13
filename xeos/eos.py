@@ -225,7 +225,17 @@ class EquationOfState:
         return apply_eos(func, t, s, pn, attrs=_ATTRS["alpha"])
 
     def beta(self, t, s, p):
-        """Haline contraction coefficient ``(1/rho) drho/dS`` [(salt unit)-1]."""
+        """Haline contraction coefficient ``(1/rho) drho/dS`` [(salt unit)-1].
+
+        Caveat for near-fresh water: backends whose surface polynomial carries
+        an ``s**1.5`` term (``jmd95``, ``unesco``, ``mdjwf``) have a *true*
+        ``drho/dS`` that diverges as ``S -> 0``. Where those backends fall back
+        to finite differences, ``_drho_ds`` switches to a one-sided step below
+        the difference increment so ``beta`` stays finite for river-plume / ice-
+        melt inputs -- but the value returned there is a finite proxy for an
+        unbounded quantity and should not be trusted quantitatively at very low
+        salinity. (Density itself remains well behaved.)
+        """
         self._warn_if_out_of_range(t, s, p)
         pn = self._native_p(p)
 
