@@ -35,6 +35,10 @@ class EOSBackend:
     drho_dt: Optional[Callable] = None  # d(rho)/d(temperature) [kg m-3 degC-1]
     drho_ds: Optional[Callable] = None  # d(rho)/d(salinity)    [kg m-3 (salt unit)-1]
     specific_volume: Optional[Callable] = None  # [m3 kg-1]
+    # Optional numba-accelerated density ufunc (built lazily via backends._accel;
+    # populated only for realistic kernels, and only ever *executed* when the
+    # facade is created with accelerate=True). ``None`` means "no fast path".
+    density_fast: Optional[Callable] = None
     valid_range: dict = field(default_factory=dict)
 
 

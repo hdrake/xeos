@@ -83,4 +83,6 @@ register(EOSBackend(
     pressure_unit=PressureUnit.DBAR,
     reference="Jackett & McDougall (1995), J. Atmos. Oceanic Technol., 12, 381-389.",
     description="UNESCO/EOS-80 refit; MITgcm JMD95Z/JMD95P, ECCO standard.",
+    # Oceanographic validity envelope (user units: degC / PSU / dbar).
+    valid_range={"t": (-2.0, 40.0), "s": (0.0, 42.0), "p_dbar": (0.0, 10000.0)},
 ))

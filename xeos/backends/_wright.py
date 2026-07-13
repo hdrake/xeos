@@ -79,6 +79,9 @@ def _backend(eos_id, coeffs, label):
         pressure_unit=PressureUnit.PASCAL,
         reference="Wright (1997), J. Atmos. Oceanic Technol., 14, 735-740.",
         description=label,
+        # Validity envelope in user units (degC / PSU / dbar); the facade converts
+        # the user pressure to dbar for the range check even though the kernel is Pa.
+        valid_range={"t": (-2.0, 40.0), "s": (0.0, 40.0), "p_dbar": (0.0, 10000.0)},
     )
 
 

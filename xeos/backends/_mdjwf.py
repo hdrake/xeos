@@ -56,4 +56,5 @@ register(EOSBackend(
     reference="McDougall, Jackett, Wright & Feistel (2003), "
               "J. Atmos. Oceanic Technol., 20, 730-741.",
     description="Rational-function EOS; MITgcm MDJWF.",
+    valid_range={"t": (-2.0, 40.0), "s": (0.0, 42.0), "p_dbar": (0.0, 10000.0)},
 ))

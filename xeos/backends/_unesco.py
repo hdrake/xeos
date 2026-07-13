@@ -65,4 +65,5 @@ register(EOSBackend(
     pressure_unit=PressureUnit.DBAR,
     reference="Fofonoff & Millard (1983), UNESCO Tech. Papers Mar. Sci. 44 (EOS-80).",
     description="UNESCO/EOS-80; MOM6 UNESCO/JACKETT_MCD, MITgcm UNESCO.",
+    valid_range={"t": (-2.0, 40.0), "s": (0.0, 42.0), "p_dbar": (0.0, 10000.0)},
 ))

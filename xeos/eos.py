@@ -7,13 +7,27 @@ and derives ``alpha``/``beta`` from the backend's analytic density derivatives,
 falling back to centred finite differences when a backend supplies none.
 """
 
+import importlib.util
+import warnings
+
 import numpy as np
+import xarray as xr
 
 from .conventions import PressureUnit, to_native_pressure
 from .registry import get_backend, EOSBackend
 from .xarray_utils import apply_eos
 
 __all__ = ["EquationOfState"]
+
+
+def _is_lazy_input(a):
+    """True for inputs whose range can't be checked without a compute.
+
+    (:class:`xarray.DataArray` -- may wrap dask -- or a bare ``dask.array.Array``).
+    """
+    if isinstance(a, xr.DataArray):
+        return True
+    return type(a).__module__.startswith("dask")
 
 # CF-style attributes attached to xarray outputs.
 _ATTRS = {
@@ -43,11 +57,34 @@ class EquationOfState:
         Canonical EOS id (see :func:`xeos.list_eos`) or a backend instance.
     pressure_input_unit : {"dbar", "Pa"}, default "dbar"
         Unit of the ``p`` argument passed to the methods below.
+    accelerate : bool, default False
+        Use the optional numba-accelerated density kernel.  Requires ``numba``
+        (``pip install xeos[complete]``) and a backend that provides a fast path;
+        otherwise a helpful :class:`ImportError` is raised.  When ``False``
+        (the default) numba is never imported.
     """
 
-    def __init__(self, eos, pressure_input_unit="dbar"):
+    def __init__(self, eos, pressure_input_unit="dbar", accelerate=False):
         self.backend: EOSBackend = eos if isinstance(eos, EOSBackend) else get_backend(eos)
         self.pressure_input_unit = PressureUnit(pressure_input_unit)
+        self.accelerate = bool(accelerate)
+        if self.accelerate:
+            fast = self.backend.density_fast
+            if fast is None:
+                raise ImportError(
+                    f"EOS {self.backend.id!r} has no numba-accelerated kernel; "
+                    "rebuild it with accelerate=False. Accelerated backends: "
+                    "jmd95, unesco, mdjwf, wright97-full, wright97-reduced, "
+                    "teos10-poly55, roquet-spv, mpas-jm, mpas-wright."
+                )
+            if importlib.util.find_spec("numba") is None:
+                raise ImportError(
+                    "accelerate=True requires the optional 'numba' dependency. "
+                    "Install it with `pip install xeos[complete]`."
+                )
+            self._density = fast
+        else:
+            self._density = self.backend.density
 
     # -- introspection -----------------------------------------------------
     @property
@@ -72,9 +109,46 @@ class EquationOfState:
 
     def __repr__(self):
         return (f"<EquationOfState {self.backend.id!r}: "
-                f"{self.temperature.value} / {self.salinity.value}>")
+                f"{self.temperature.value} / {self.salinity.value}; "
+                f"ref: {self.reference}>")
 
     # -- internals ---------------------------------------------------------
+    def _warn_if_out_of_range(self, t, s, p):
+        """Warn (never clamp) when plain numpy/scalar inputs leave the backend's
+        documented ``valid_range``.  Lazy inputs (DataArray / dask) are skipped so
+        no compute is forced.  One combined warning per call."""
+        vr = self.backend.valid_range
+        if not vr:
+            return
+        if any(_is_lazy_input(a) for a in (t, s, p)):
+            return
+        # Compare in user units: t [degC], s, p [dbar].
+        if self.pressure_input_unit is PressureUnit.PASCAL:
+            p_dbar = np.asarray(p, dtype=float) / 1.0e4
+        else:
+            p_dbar = np.asarray(p, dtype=float)
+        checks = (("temperature", np.asarray(t, dtype=float), "t"),
+                  ("salinity", np.asarray(s, dtype=float), "s"),
+                  ("pressure", p_dbar, "p_dbar"))
+        problems = []
+        for label, arr, key in checks:
+            if arr.size == 0 or key not in vr:
+                continue
+            lo, hi = vr[key]
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", RuntimeWarning)  # all-NaN slices
+                amin = float(np.nanmin(arr))
+                amax = float(np.nanmax(arr))
+            if amin < lo or amax > hi:
+                problems.append(
+                    f"{label} [{amin:.4g}, {amax:.4g}] outside [{lo:g}, {hi:g}]")
+        if problems:
+            warnings.warn(
+                f"{self.backend.id}: inputs outside the documented valid range "
+                f"({'; '.join(problems)}); EOS accuracy is not guaranteed there.",
+                stacklevel=2,
+            )
+
     def _native_p(self, p):
         # Convert user pressure -> dbar -> backend native unit.
         if self.pressure_input_unit is PressureUnit.PASCAL:
@@ -86,8 +160,8 @@ class EquationOfState:
     def _drho_dt(self, t, s, pn):
         if self.backend.drho_dt is not None:
             return self.backend.drho_dt(t, s, pn)
-        return (self.backend.density(t + _DT, s, pn)
-                - self.backend.density(t - _DT, s, pn)) / (2.0 * _DT)
+        return (self._density(t + _DT, s, pn)
+                - self._density(t - _DT, s, pn)) / (2.0 * _DT)
 
     def _drho_ds(self, t, s, pn):
         if self.backend.drho_ds is not None:
@@ -97,51 +171,57 @@ class EquationOfState:
         # This keeps beta finite for near-fresh water (river plumes, ice melt).
         s_lo = np.where(s >= _DS, s - _DS, s)
         denom = np.where(s >= _DS, 2.0 * _DS, _DS)
-        return (self.backend.density(t, s + _DS, pn)
-                - self.backend.density(t, s_lo, pn)) / denom
+        return (self._density(t, s + _DS, pn)
+                - self._density(t, s_lo, pn)) / denom
 
     # -- quantities --------------------------------------------------------
     def rho(self, t, s, p):
         """In-situ density [kg m-3]."""
+        self._warn_if_out_of_range(t, s, p)
         pn = self._native_p(p)
-        return apply_eos(self.backend.density, t, s, pn, attrs=_ATTRS["rho"])
+        return apply_eos(self._density, t, s, pn, attrs=_ATTRS["rho"])
 
     def specific_volume(self, t, s, p):
         """Specific volume [m3 kg-1]."""
+        self._warn_if_out_of_range(t, s, p)
         pn = self._native_p(p)
         if self.backend.specific_volume is not None:
             func = self.backend.specific_volume
         else:
             def func(t_, s_, p_):
-                return 1.0 / self.backend.density(t_, s_, p_)
+                return 1.0 / self._density(t_, s_, p_)
         return apply_eos(func, t, s, pn, attrs=_ATTRS["specific_volume"])
 
     def drho_dt(self, t, s, p):
         """Partial derivative of density wrt temperature [kg m-3 degC-1]."""
+        self._warn_if_out_of_range(t, s, p)
         pn = self._native_p(p)
         return apply_eos(lambda t_, s_, p_: self._drho_dt(t_, s_, p_),
                          t, s, pn, attrs=_ATTRS["drho_dt"])
 
     def drho_ds(self, t, s, p):
         """Partial derivative of density wrt salinity [kg m-3 (salt unit)-1]."""
+        self._warn_if_out_of_range(t, s, p)
         pn = self._native_p(p)
         return apply_eos(lambda t_, s_, p_: self._drho_ds(t_, s_, p_),
                          t, s, pn, attrs=_ATTRS["drho_ds"])
 
     def alpha(self, t, s, p):
         """Thermal expansion coefficient ``-(1/rho) drho/dT`` [degC-1]."""
+        self._warn_if_out_of_range(t, s, p)
         pn = self._native_p(p)
 
         def func(t_, s_, p_):
-            return -self._drho_dt(t_, s_, p_) / self.backend.density(t_, s_, p_)
+            return -self._drho_dt(t_, s_, p_) / self._density(t_, s_, p_)
 
         return apply_eos(func, t, s, pn, attrs=_ATTRS["alpha"])
 
     def beta(self, t, s, p):
         """Haline contraction coefficient ``(1/rho) drho/dS`` [(salt unit)-1]."""
+        self._warn_if_out_of_range(t, s, p)
         pn = self._native_p(p)
 
         def func(t_, s_, p_):
-            return self._drho_ds(t_, s_, p_) / self.backend.density(t_, s_, p_)
+            return self._drho_ds(t_, s_, p_) / self._density(t_, s_, p_)
 
         return apply_eos(func, t, s, pn, attrs=_ATTRS["beta"])

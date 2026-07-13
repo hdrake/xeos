@@ -85,6 +85,7 @@ register(EOSBackend(
     description=("Jackett-McDougall (1995) UNESCO/EOS-80 refit; identical kernel to "
                  "xeos 'jmd95'. MPAS-O clamps T,S and derives pressure from depth "
                  "(documented in this module; not applied here)."),
+    valid_range={"t": (-2.0, 40.0), "s": (0.0, 42.0), "p_dbar": (0.0, 10000.0)},
 ))
 
 register(EOSBackend(
@@ -100,4 +101,5 @@ register(EOSBackend(
     description=("Wright (1997) reduced-range coefficients (Table 1, last column); "
                  "identical kernel to xeos 'wright97-reduced'. MPAS-O clamps T,S and "
                  "uses Boussinesq pressure p=-rho0*g*z (documented; not applied here)."),
+    valid_range={"t": (-2.0, 40.0), "s": (0.0, 40.0), "p_dbar": (0.0, 10000.0)},
 ))

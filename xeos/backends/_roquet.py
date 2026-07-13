@@ -12,6 +12,8 @@ State variables: conservative temperature [degC], absolute salinity [g/kg], and
 sea pressure [dbar] (numerically ~ geopotential depth in m).
 """
 
+import numpy as np
+
 from ..conventions import TemperatureKind, SalinityKind, PressureUnit
 from ..registry import EOSBackend, register
 
@@ -75,7 +77,6 @@ BET012 = -2.6514181169e-03; BET003 = -2.3025968587e-04
 
 
 def _reduced(ct, sa, p_dbar):
-    import numpy as np
     ss = np.sqrt((sa + _dS) / _SAu)
     tt = ct / _CTu
     pp = p_dbar / _Zu
@@ -159,4 +160,6 @@ register(EOSBackend(
     reference="Roquet et al. (2015), Ocean Modelling, 90, 29-43.",
     description="55-term Boussinesq polynomial approx to TEOS-10 "
                 "(Oceananigans / SeawaterPolynomials.jl; MOM6 ROQUET_RHO family).",
+    # TEOS-10 funnel in user units: conservative temp / absolute salinity / dbar.
+    valid_range={"t": (-2.0, 40.0), "s": (0.0, 42.0), "p_dbar": (0.0, 8000.0)},
 ))
