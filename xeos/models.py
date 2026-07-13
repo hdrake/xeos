@@ -7,32 +7,9 @@ matching ``xeos`` equation of state, so post-processing uses the same EOS the
 simulation did.
 """
 
-import inspect
-
 from .eos import EquationOfState
 from .registry import get_backend, list_eos
 from .backends._linear import make_linear
-
-# The optional numba fast-path adds an ``accelerate`` kwarg to
-# ``EquationOfState.__init__`` (defined by the eos.py fast-path work). We forward
-# it whenever the installed ``EquationOfState`` accepts it, so this module works
-# both before and after that change lands (cross-file contract).
-_EOS_ACCEPTS_ACCELERATE = (
-    "accelerate" in inspect.signature(EquationOfState.__init__).parameters
-)
-
-
-def _build_eos(eos, pressure_input_unit, accelerate):
-    """Construct an :class:`EquationOfState`, forwarding ``accelerate`` if supported."""
-    kwargs = {"pressure_input_unit": pressure_input_unit}
-    if _EOS_ACCEPTS_ACCELERATE:
-        kwargs["accelerate"] = accelerate
-    elif accelerate:
-        raise TypeError(
-            "accelerate=True requires the numba fast-path in EquationOfState, "
-            "which this build of xeos does not provide."
-        )
-    return EquationOfState(eos, **kwargs)
 
 __all__ = [
     "from_model",
@@ -153,10 +130,12 @@ def equation_of_state(eos, pressure_input_unit="dbar", accelerate=False, **param
     """
     if isinstance(eos, str) and eos == "linear" and params:
         backend = make_linear(**params)
-        return _build_eos(backend, pressure_input_unit, accelerate)
+        return EquationOfState(backend, pressure_input_unit=pressure_input_unit,
+                               accelerate=accelerate)
     if params:
         raise TypeError(f"EOS {eos!r} does not accept parameters {sorted(params)}.")
-    return _build_eos(eos, pressure_input_unit, accelerate)
+    return EquationOfState(eos, pressure_input_unit=pressure_input_unit,
+                           accelerate=accelerate)
 
 
 def from_model(model, selector, pressure_input_unit="dbar", accelerate=False, **params):
