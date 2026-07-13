@@ -30,8 +30,11 @@ import subprocess
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# Pinned to a specific MOM6 commit (recorded in generate_truth.py provenance) so the
+# truth is reproducible; bump the SHA there and here together when refreshing.
+MOM6_SHA = "d4d0437f0366e097ff90fe896ae6307cb3b67c56"
 MOM6_URL = (
-    "https://raw.githubusercontent.com/mom-ocean/MOM6/main/"
+    f"https://raw.githubusercontent.com/mom-ocean/MOM6/{MOM6_SHA}/"
     "src/equation_of_state/MOM_EOS_UNESCO.F90"
 )
 _F90 = os.path.join(HERE, "MOM_EOS_UNESCO.F90")  # gitignored

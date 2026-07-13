@@ -39,7 +39,11 @@ import subprocess
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-INI_EOS_URL = "https://raw.githubusercontent.com/MITgcm/MITgcm/master/model/src/ini_eos.F"
+# Pinned to a specific MITgcm commit (recorded in generate_truth.py provenance) so
+# the truth is reproducible; bump the SHA there and here together when refreshing.
+MITGCM_SHA = "de8e498dc96ecd87b2577e8430a365d0ca147647"
+INI_EOS_URL = (f"https://raw.githubusercontent.com/MITgcm/MITgcm/{MITGCM_SHA}/"
+               "model/src/ini_eos.F")
 _F = os.path.join(HERE, "ini_eos.F")  # gitignored
 
 _H = 1.0e-3  # FD step; matches the facade's _DT/_DS

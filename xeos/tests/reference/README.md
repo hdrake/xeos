@@ -22,6 +22,24 @@ Every regeneration stamps `truth.json` with the exact reference-package versions
 used (`provenance.reference_versions`). The grid of input `(t, s, p)` points and
 the inputs themselves are stored alongside the expected outputs.
 
+**All upstream sources are pinned to exact commit SHAs / release versions** (not
+moving branches like `master`/`main`), so a regeneration is reproducible and an
+upstream force-push or coefficient change can't silently alter the truth. The pins
+live as `*_SHA` / `*_VERSION` constants at the top of each `_build_*.py`
+(`MITGCM_SHA`, `MOM6_SHA`, `E3SM_SHA`, `SEAWATERPOLYNOMIALS_VERSION`) and
+`POLYTEOS_SHA` in `generate_truth.py`; the resolved values are also written into the
+`provenance.reference_versions` block of `truth.json`. **To bump a source**, update
+its SHA/version constant in the relevant `_build_*.py` (and `POLYTEOS_SHA` /
+`P_VALS` etc. in `generate_truth.py`), rerun `python generate_truth.py`, review the
+diff, and commit the new `truth.json`. Resolve a fresh SHA with e.g.
+`git ls-remote https://github.com/mom-ocean/MOM6 HEAD`.
+
+The cross-validation grid is `T = {-2, 5, 15, 30}` °C × `S = {30, 35, 38}` ×
+`p = {0, 1000, 4000, 6000}` dbar = **48 points**. `p = 6000 dbar` extends the check
+into deep-ocean / high-pressure conditions. T/S are kept in-funnel for exact
+cross-model truth (extreme `S=0` / `T=35` edges are covered by a separate
+plausibility test, since `gsw` legitimately returns NaN at `S=0`).
+
 Truth source → xeos backend validated. **Model source** (compiled/run on demand by
 the `_build_*.py` scripts; source itself not committed) is preferred:
 
@@ -31,10 +49,11 @@ the `_build_*.py` scripts; source itself not committed) is preferred:
 | MOM6 `MOM_EOS_Wright_red.F90` / `_full.F90` (gfortran) | `wright97-reduced`, `wright97-full` | density + analytic alpha/beta; replaces the `momlevel` Python port and gives `wright97-full` its first numeric truth (`_build_wright_fortran.py`) |
 | MOM6 `MOM_EOS_UNESCO.F90` (gfortran) | `jmd95@mom6` → `jmd95` | MOM6's "UNESCO" *is* the JMD95 fit; a **second** model source for `jmd95` besides MITgcm's own (`_build_unesco_fortran.py`) |
 | MOM6 `MOM_EOS_Roquet_SpV.F90` (gfortran) | `roquet-spv` | density + analytic alpha/beta (`_build_roquet_spv_fortran.py`) |
+| MOM6 `MOM_EOS_Roquet_rho.F90` (gfortran) | `teos10-poly55@mom6` → `teos10-poly55` | the Roquet 55-term **density** polynomial straight from MOM6 source — a **second, independent** truth for `teos10-poly55` besides `polyTEOS10.py`; density + analytic alpha/beta (`_build_roquet_rho_fortran.py`) |
 | MPAS-O `mpas_ocn_equation_of_state_{linear,jm,wright}.F` (gfortran) | `mpas-linear`, `mpas-jm`, `mpas-wright` | density + FD alpha/beta. `mpas-jm`/`mpas-wright` reuse the `jmd95`/`wright97-reduced` kernels, so this is an independent check that MPAS-O's `jm`/`wright` are byte-for-byte the same EOS (`_build_mpas_eos_fortran.py`; E3SM source not committed) |
 | `SeawaterPolynomials.jl` (Julia, Oceananigans) | the six idealized `roquet-*` forms | density + analytic alpha/beta; first numeric truth for these (`_build_seawaterpolynomials_julia.py`) |
 | `gsw`                 | `teos10`               | canonical TEOS-10 (accepted exception); density + alpha/beta |
-| `polyTEOS10.py`       | `teos10-poly55`        | Roquet's own code; density + alpha/beta (could add MOM6 `MOM_EOS_Roquet_rho.F90`) |
+| `polyTEOS10.py`       | `teos10-poly55`        | Roquet's own code; density + alpha/beta. No longer the *only* source: MOM6 `MOM_EOS_Roquet_rho.F90` (`teos10-poly55@mom6`, above) now validates the same kernel independently |
 
 > **JMD95 vs UNESCO (a multi-model finding).** MOM6's `EQN_OF_STATE='UNESCO'` (and
 > `'JACKETT_MCD'`) is, despite the name, the Jackett & McDougall (1995)

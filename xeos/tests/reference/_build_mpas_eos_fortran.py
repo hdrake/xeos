@@ -36,7 +36,10 @@ import urllib.request
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-_BASE = ("https://raw.githubusercontent.com/E3SM-Project/E3SM/master/"
+# Pinned to a specific E3SM commit (recorded in generate_truth.py provenance) so the
+# truth is reproducible; bump the SHA there and here together when refreshing.
+E3SM_SHA = "6f39d9f201797a0780b07a9872e0dce8466d167f"
+_BASE = (f"https://raw.githubusercontent.com/E3SM-Project/E3SM/{E3SM_SHA}/"
          "components/mpas-ocean/src/shared/mpas_ocn_equation_of_state_")
 
 # (driver tag -> EOS .F basename); files are gitignored, downloaded on demand.
