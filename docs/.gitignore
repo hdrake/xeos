@@ -1,0 +1,6 @@
+# Sphinx build output and build-time auto-generated sources.
+_build/
+_generated/
+# myst-nb / jupyter-cache execution artifacts.
+.jupyter_cache/
+jupyter_execute/

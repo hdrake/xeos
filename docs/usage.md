@@ -29,6 +29,16 @@ xeos.from_model("MPAS-Ocean", "jm").rho(theta, salt, p)
 xeos.from_model("Oceananigans", "TEOS10EquationOfState").rho(CT, SA, p)
 ```
 
+### Selector reference
+
+Every model selector string `xeos` understands, and the canonical EOS id it
+resolves to. This table is **generated from `xeos` itself at documentation
+build time** (from `xeos.MODEL_SELECTORS`), so it cannot drift from the code.
+Selector matching is case-insensitive, so the strings are shown normalised.
+
+```{include} _generated/selector_table.md
+```
+
 ## Address an EOS directly
 
 ```python
