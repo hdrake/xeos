@@ -14,7 +14,7 @@ import numpy as np
 import xarray as xr
 
 from .conventions import PressureUnit, to_native_pressure
-from .registry import get_backend, EOSBackend
+from .registry import get_backend, list_eos, EOSBackend
 from .xarray_utils import apply_eos
 
 __all__ = ["EquationOfState"]
@@ -58,10 +58,12 @@ class EquationOfState:
     pressure_input_unit : {"dbar", "Pa"}, default "dbar"
         Unit of the ``p`` argument passed to the methods below.
     accelerate : bool, default False
-        Use the optional numba-accelerated density kernel.  Requires ``numba``
-        (``pip install xeos[complete]``) and a backend that provides a fast path;
-        otherwise a helpful :class:`ImportError` is raised.  When ``False``
-        (the default) numba is never imported.
+        Use the optional numba-accelerated kernels (density, and the analytic
+        ``drho_dt``/``drho_ds`` where a backend provides them; FD-only backends get
+        their alpha/beta from the accelerated density).  Requires ``numba``
+        (``pip install xeos[complete]``).  A backend that has no fast path raises
+        :class:`NotImplementedError`; numba being absent raises :class:`ImportError`.
+        When ``False`` (the default) numba is never imported.
     """
 
     def __init__(self, eos, pressure_input_unit="dbar", accelerate=False):
@@ -69,22 +71,28 @@ class EquationOfState:
         self.pressure_input_unit = PressureUnit(pressure_input_unit)
         self.accelerate = bool(accelerate)
         if self.accelerate:
-            fast = self.backend.density_fast
-            if fast is None:
-                raise ImportError(
+            if self.backend.density_fast is None:
+                accel = sorted(i for i in list_eos()
+                               if get_backend(i).density_fast is not None)
+                raise NotImplementedError(
                     f"EOS {self.backend.id!r} has no numba-accelerated kernel; "
-                    "rebuild it with accelerate=False. Accelerated backends: "
-                    "jmd95, unesco, mdjwf, wright97-full, wright97-reduced, "
-                    "teos10-poly55, roquet-spv, mpas-jm, mpas-wright."
+                    f"build it with accelerate=False. Accelerated backends: "
+                    f"{', '.join(accel)}."
                 )
             if importlib.util.find_spec("numba") is None:
                 raise ImportError(
                     "accelerate=True requires the optional 'numba' dependency. "
                     "Install it with `pip install xeos[complete]`."
                 )
-            self._density = fast
+            self._density = self.backend.density_fast
+            # Prefer an accelerated analytic derivative; else numpy analytic; else
+            # None -> the facade differences the (accelerated) density kernel.
+            self._drho_dt_kernel = self.backend.drho_dt_fast or self.backend.drho_dt
+            self._drho_ds_kernel = self.backend.drho_ds_fast or self.backend.drho_ds
         else:
             self._density = self.backend.density
+            self._drho_dt_kernel = self.backend.drho_dt
+            self._drho_ds_kernel = self.backend.drho_ds
 
     # -- introspection -----------------------------------------------------
     @property
@@ -158,14 +166,14 @@ class EquationOfState:
         return to_native_pressure(p_dbar, self.backend.pressure_unit)
 
     def _drho_dt(self, t, s, pn):
-        if self.backend.drho_dt is not None:
-            return self.backend.drho_dt(t, s, pn)
+        if self._drho_dt_kernel is not None:
+            return self._drho_dt_kernel(t, s, pn)
         return (self._density(t + _DT, s, pn)
                 - self._density(t - _DT, s, pn)) / (2.0 * _DT)
 
     def _drho_ds(self, t, s, pn):
-        if self.backend.drho_ds is not None:
-            return self.backend.drho_ds(t, s, pn)
+        if self._drho_ds_kernel is not None:
+            return self._drho_ds_kernel(t, s, pn)
         # Centred difference, but switch to a forward difference where salinity is
         # below the step (several EOS contain sqrt(s), so s - _DS < 0 -> NaN).
         # This keeps beta finite for near-fresh water (river plumes, ice melt).
