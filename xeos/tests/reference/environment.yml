@@ -21,6 +21,11 @@ dependencies:
   - numpy
   - gfortran       # compiles the MOM6 + MITgcm + MPAS-O Fortran drivers
   - julia          # runs SeawaterPolynomials.jl for the idealized roquet-* forms
+                   # NOTE: conda-forge has no `julia` build for some platforms (e.g.
+                   # osx-arm64). There, drop this line and install julia via the
+                   # system (juliaup / julialang.org); generate_truth.py finds it on
+                   # PATH. The SeawaterPolynomials.jl package itself is pinned to an
+                   # exact version inside _build_seawaterpolynomials_julia.py.
   - pip
   - pip:
       - gsw==3.6.23

@@ -2,8 +2,15 @@
 # Kept separate from pyproject.toml on purpose (the release agent owns that file).
 sphinx>=7
 furo
-myst-parser
+# myst-nb supersedes myst-parser (it bundles the MyST Markdown parser) and adds
+# executed-notebook support for docs/examples/*.md.
+myst-nb
 sphinx-autodoc-typehints
+# Executed-notebook runtime deps (gsw arrives via the .[teos10] extra below):
+pooch          # fetch the example MITgcm dataset from Zenodo
+matplotlib     # notebook plots (pcolormesh)
+netCDF4        # xarray engine for the HDF5/netCDF4 example dataset
+ipykernel      # Jupyter kernel myst-nb executes the notebook in
 # Install xeos itself (with the gsw extra) so autodoc can import every module,
 # including the teos10 backend. The relative path resolves against the working
 # directory pip is invoked from, so install from the repo root:

@@ -68,7 +68,10 @@ conversion helpers live in `xeos.conventions` (these need the `gsw` extra).
 `xeos.list_eos()` returns the current set. As of now:
 
 - **linear** — configurable (MOM6/MITgcm/Oceananigans `LINEAR`)
-- **wright97-full**, **wright97-reduced** — Wright 1997 (MOM6 `WRIGHT_FULL`, `WRIGHT`/`WRIGHT_RED`)
+- **wright97-full**, **wright97-reduced** — Wright 1997 (MOM6 `WRIGHT_FULL`,
+  `WRIGHT_RED`/`WRIGHT_REDUCED`). The bare MOM6 `WRIGHT` selector also resolves to
+  `wright97-reduced` **with a warning**: it is the *corrected* reduced fit, whereas
+  MOM6's legacy `WRIGHT` runs the uncorrected kernel (see "not yet implemented").
 - **jmd95** — Jackett & McDougall 1995 (MITgcm `JMD95Z`/`JMD95P`; **also** MOM6
   `UNESCO`/`JACKETT_MCD`, which are this fit — *not* EOS-80)
 - **unesco** — UNESCO/EOS-80, Fofonoff & Millard 1983 (MITgcm `UNESCO`)
@@ -85,7 +88,9 @@ conversion helpers live in `xeos.conventions` (these need the `gsw` extra).
   Gibbs function; MOM6/MITgcm `TEOS10`)
 
 Not yet implemented (planned, slot into the same registry): MOM6 `JACKETT_06` and
-`WRIGHT` legacy-buggy, and MITgcm `POLY3` (per-level runtime coefficients).
+the legacy-buggy `WRIGHT` kernel (the bare `WRIGHT` selector currently resolves to
+the corrected `wright97-reduced` with a warning), and MITgcm `POLY3` (per-level
+runtime coefficients).
 
 Full literature references with DOIs are in the
 [usage docs](docs/usage.md#references).

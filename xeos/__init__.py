@@ -13,7 +13,14 @@ See :func:`xeos.list_eos` for the available equations of state.
 from . import backends  # noqa: F401  (registers all built-in EOS at import time)
 
 from .eos import EquationOfState
-from .models import from_model, equation_of_state, MODEL_SELECTORS
+from .models import (
+    from_model,
+    equation_of_state,
+    MODEL_SELECTORS,
+    list_models,
+    selectors_for,
+    selector_table,
+)
 from .api import rho, alpha, beta, specific_volume
 from .registry import list_eos, get_backend
 from .conventions import TemperatureKind, SalinityKind, PressureUnit
@@ -24,6 +31,9 @@ __all__ = [
     "from_model",
     "equation_of_state",
     "MODEL_SELECTORS",
+    "list_models",
+    "selectors_for",
+    "selector_table",
     "rho",
     "alpha",
     "beta",

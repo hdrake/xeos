@@ -58,4 +58,5 @@ register(EOSBackend(
               "TEOS-10 standard: IOC/SCOR/IAPSO (2010); McDougall & Barker (2011).",
     description="TEOS-10 via gsw's 75-term Roquet polynomial (MOM6/MITgcm TEOS10); "
                 "not the exact Gibbs function.",
+    valid_range={"t": (-2.0, 40.0), "s": (0.0, 42.0), "p_dbar": (0.0, 8000.0)},
 ))

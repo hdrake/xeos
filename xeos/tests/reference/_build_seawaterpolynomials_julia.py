@@ -29,6 +29,10 @@ import subprocess
 HERE = os.path.dirname(os.path.abspath(__file__))
 _DRIVER = os.path.join(HERE, "_seawaterpolynomials_driver.jl")  # gitignored
 
+# Pinned SeawaterPolynomials.jl release (recorded in generate_truth.py provenance)
+# so the idealized-Roquet truth is reproducible; bump here + there when refreshing.
+SEAWATERPOLYNOMIALS_VERSION = "0.3.10"
+
 # Map xeos backend id -> SeawaterPolynomials.jl coefficient-set symbol.
 COEFFICIENT_SETS = {
     "roquet-linear": "Linear",
@@ -52,14 +56,17 @@ import Pkg
 # Use a dedicated project env (gitignored) so we don't touch -- or depend on the
 # integrity of -- the user's global Julia environment.
 Pkg.activate(joinpath(@__DIR__, "_julia_env"); io=devnull)
-for p in ("SeawaterPolynomials", "JSON")
-    try
-        @eval import $(Symbol(p))
-    catch
-        Pkg.add(p; io=devnull)
-        @eval import $(Symbol(p))
-    end
+# SeawaterPolynomials is pinned to an EXACT release for reproducible truth; the add
+# with a pinned version spec is idempotent (a fast no-op once satisfied) and repins a
+# stale env. JSON is plumbing and left unpinned.
+Pkg.add(name="SeawaterPolynomials", version="%SWP_VERSION%"; io=devnull)
+try
+    @eval import JSON
+catch
+    Pkg.add("JSON"; io=devnull)
+    @eval import JSON
 end
+import SeawaterPolynomials
 using SeawaterPolynomials: ρ, thermal_sensitivity, haline_sensitivity, RoquetEquationOfState
 """
         + r"""
@@ -116,6 +123,7 @@ def seawaterpolynomials_truth(s, t, p_dbar):
         return None
     src = (
         _driver_source()
+        .replace("%SWP_VERSION%", SEAWATERPOLYNOMIALS_VERSION)
         .replace("%CHECK_LIN%", repr(_CHECK_LINEAR_Z0))
         .replace("%CHECK_CAB%", repr(_CHECK_CABTHERMO_Zm1000))
     )

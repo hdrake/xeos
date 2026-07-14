@@ -40,7 +40,7 @@ complete = ["gsw", "numba"]
 # Test deps: pytest + gsw (so the TEOS-10 cases run) + dask (exercises the
 # dask-parallelized path). The reference packages that produce the frozen
 # fixtures are NOT here — see xeos/tests/reference/README.md.
-test = ["pytest", "gsw", "dask"]
+test = ["pytest", "gsw", "dask", "hypothesis", "numba"]
 
 [project.urls]
 "Homepage" = "https://github.com/hdrake/xeos"

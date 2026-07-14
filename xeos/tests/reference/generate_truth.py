@@ -16,6 +16,7 @@ Reference -> backend validated:
     MOM6 MOM_EOS_Wright_{red,full}.F90 -> wright97-reduced, wright97-full (gfortran)
     MOM6 MOM_EOS_UNESCO.F90            -> jmd95@mom6 (the MOM6 'UNESCO' = JMD95 fit)
     MOM6 MOM_EOS_Roquet_SpV.F90        -> roquet-spv (gfortran)
+    MOM6 MOM_EOS_Roquet_rho.F90        -> teos10-poly55@mom6 (2nd source; gfortran)
     MPAS-O mpas_ocn_equation_of_state_*.F -> mpas-linear, mpas-jm, mpas-wright (gfortran)
     SeawaterPolynomials.jl (Julia)     -> the six idealized roquet-* forms
     polyTEOS10.py                      -> teos10-poly55      (downloaded if absent)
@@ -39,14 +40,22 @@ from importlib.metadata import version, PackageNotFoundError
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# Upstream sources are pinned to specific commit SHAs (not moving branches) so the
+# truth is reproducible. Bump a SHA here AND in the matching _build_*.py when
+# refreshing a source; the pinned values are stamped into provenance below.
+POLYTEOS_SHA = "36b9aef6cd2755823b5d3a7349cfe64a6823a73e"
 POLYTEOS_URL = (
-    "https://raw.githubusercontent.com/fabien-roquet/polyTEOS/master/polyTEOS10.py"
+    f"https://raw.githubusercontent.com/fabien-roquet/polyTEOS/{POLYTEOS_SHA}/"
+    "polyTEOS10.py"
 )
 
-# Fixed validation grid (broadcast to all combinations).
+# Fixed validation grid (broadcast to all combinations). p=6000 dbar extends the
+# cross-validation to deep-ocean / high-pressure conditions; T/S stay in-funnel
+# (extreme S=0 / T=35 edges are covered by a separate plausibility test, not exact
+# cross-model truth, since gsw returns NaN at S=0).
 T_VALS = [-2.0, 5.0, 15.0, 30.0]
 S_VALS = [30.0, 35.0, 38.0]
-P_VALS = [0.0, 1000.0, 4000.0]  # dbar
+P_VALS = [0.0, 1000.0, 4000.0, 6000.0]  # dbar
 
 
 def _ver(pkg):
@@ -71,11 +80,13 @@ def main():
     sys.path.insert(0, HERE)
     import polyTEOS10
     # Model-source generators (compile MOM6/MITgcm Fortran / run Oceananigans Julia).
-    from _build_wright_fortran import wright_truth
+    from _build_wright_fortran import wright_truth, MOM6_SHA as mom6_sha
     from _build_unesco_fortran import unesco_mom6_truth
-    from _build_mitgcm_fortran import mitgcm_truth
+    from _build_mitgcm_fortran import mitgcm_truth, MITGCM_SHA as mitgcm_sha
+    from _build_mpas_eos_fortran import E3SM_SHA as e3sm_sha
     from _build_seawaterpolynomials_julia import (
-        seawaterpolynomials_truth, julia_version)
+        seawaterpolynomials_truth, julia_version,
+        SEAWATERPOLYNOMIALS_VERSION as swp_version)
 
     tt, ss, pp = (np.array(v, dtype=float) for v in np.meshgrid(
         T_VALS, S_VALS, P_VALS, indexing="ij"))
@@ -114,6 +125,18 @@ def main():
         "alpha": (np.asarray(a_p) / rho_p).tolist(),
         "beta": (np.asarray(b_p) / rho_p).tolist(),
     }
+
+    # teos10-poly55@mom6: a SECOND, independent source for the Roquet 55-term density
+    # polynomial -- MOM6's authoritative Fortran (MOM_EOS_Roquet_rho.F90), compiled
+    # with gfortran, so teos10-poly55 is no longer validated only against the
+    # polyTEOS10.py Python port. The "backend" field redirects test_backends.py to the
+    # teos10-poly55 kernel (mirroring jmd95@mom6 -> jmd95). rho + analytic alpha/beta.
+    from _build_roquet_rho_fortran import roquet_rho_truth
+    roquet_rho = roquet_rho_truth(s, t, p)
+    if roquet_rho is not None:
+        cases["teos10-poly55@mom6"] = {"backend": "teos10-poly55", **roquet_rho}
+    else:
+        print("WARNING: gfortran not found; teos10-poly55@mom6 truth not regenerated.")
 
     # teos10 (gsw): rho(SA, CT, p_dbar), alpha, beta
     cases["teos10"] = {
@@ -170,20 +193,23 @@ def main():
                 "polyTEOS10": POLYTEOS_URL,
                 "gfortran": gfortran_version(),
                 "julia": julia_version(),
-                # Model source compiled/run on demand (LGPL/MIT; not committed):
+                # Model source compiled/run on demand (pinned to exact commit SHAs /
+                # release versions for reproducibility; not committed):
                 "ini_eos.F + find_rho.F (jmd95, unesco, mdjwf)":
-                    "github.com/MITgcm/MITgcm master",
+                    f"github.com/MITgcm/MITgcm @ {mitgcm_sha}",
                 "MOM_EOS_Wright_red.F90 / _full.F90 (wright97-*)":
-                    "github.com/mom-ocean/MOM6 main",
+                    f"github.com/mom-ocean/MOM6 @ {mom6_sha}",
                 "MOM_EOS_UNESCO.F90 (jmd95@mom6)":
-                    "github.com/mom-ocean/MOM6 main",
+                    f"github.com/mom-ocean/MOM6 @ {mom6_sha}",
                 "MOM_EOS_Roquet_SpV.F90 (roquet-spv)":
-                    "github.com/mom-ocean/MOM6 main",
+                    f"github.com/mom-ocean/MOM6 @ {mom6_sha}",
+                "MOM_EOS_Roquet_rho.F90 (teos10-poly55@mom6)":
+                    f"github.com/mom-ocean/MOM6 @ {mom6_sha}",
                 "mpas_ocn_equation_of_state_{linear,jm,wright}.F (mpas-*)":
-                    "github.com/E3SM-Project/E3SM master "
+                    f"github.com/E3SM-Project/E3SM @ {e3sm_sha} "
                     "(components/mpas-ocean/src/shared)",
                 "SeawaterPolynomials.jl (roquet-* idealized)":
-                    "github.com/CliMA/SeawaterPolynomials.jl",
+                    f"github.com/CliMA/SeawaterPolynomials.jl @ v{swp_version}",
             },
             "grid": {"T": T_VALS, "S": S_VALS, "P_dbar": P_VALS},
         },

@@ -27,5 +27,6 @@ rho = eos.rho(theta, salt, pressure)     # xarray DataArrays in, labeled DataArr
 
 installation
 usage
+examples/mitgcm_sigma2
 api
 ```

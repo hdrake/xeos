@@ -7,11 +7,20 @@ matching ``xeos`` equation of state, so post-processing uses the same EOS the
 simulation did.
 """
 
+import warnings
+
 from .eos import EquationOfState
 from .registry import get_backend, list_eos
 from .backends._linear import make_linear
 
-__all__ = ["from_model", "equation_of_state", "MODEL_SELECTORS"]
+__all__ = [
+    "from_model",
+    "equation_of_state",
+    "MODEL_SELECTORS",
+    "list_models",
+    "selectors_for",
+    "selector_table",
+]
 
 # (model -> {normalised selector -> canonical EOS id}).  Selectors are matched
 # case-insensitively with surrounding whitespace stripped.  Further selectors are
@@ -65,6 +74,21 @@ MODEL_SELECTORS = {
     },
 }
 
+# Selectors that xeos resolves to a *different* (usually bug-corrected) kernel
+# than the one the model's own run may have used.  We still resolve them for
+# convenience, but warn -- honouring xeos's "no silent EOS substitution"
+# contract, keyed by (canonical model, normalised selector).
+_SELECTOR_NOTES = {
+    ("MOM6", "WRIGHT"): (
+        "MOM6 'WRIGHT' resolves to xeos 'wright97-reduced', the *corrected* "
+        "reduced-coefficient Wright (1997) fit. MOM6's legacy 'WRIGHT' selector "
+        "runs the uncorrected MOM_EOS_Wright.F90, which can differ from this; "
+        "that legacy-buggy kernel is not yet vendored in xeos. Use "
+        "'WRIGHT_REDUCED' (or 'WRIGHT_RED') to select the corrected kernel "
+        "without this warning."
+    ),
+}
+
 # Friendly model-name aliases.
 _MODEL_ALIASES = {
     "MOM": "MOM6",
@@ -80,7 +104,42 @@ _MODEL_ALIASES = {
 }
 
 
-def equation_of_state(eos, pressure_input_unit="dbar", **params):
+def _normalise_model(model):
+    """Resolve a friendly model name to its canonical key (or raise ``KeyError``)."""
+    model_key = _MODEL_ALIASES.get(str(model).strip().upper())
+    if model_key is None:
+        raise KeyError(
+            f"Unknown model {model!r}. Known models: "
+            f"{', '.join(sorted(set(_MODEL_ALIASES.values())))}."
+        )
+    return model_key
+
+
+def list_models():
+    """Sorted list of canonical model names with selector tables."""
+    return sorted(set(_MODEL_ALIASES.values()))
+
+
+def selectors_for(model):
+    """Return a copy of ``model``'s ``{selector: eos_id}`` mapping.
+
+    ``model`` is normalised through the same alias logic :func:`from_model` uses,
+    so ``"mom6"``/``"MOM6"`` and ``"MITgcm"``/``"MITGCM"`` all resolve. Raises a
+    :class:`KeyError` listing the known models for an unknown ``model``.
+    """
+    return dict(MODEL_SELECTORS[_normalise_model(model)])
+
+
+def selector_table():
+    """Sorted list of ``(model, selector, eos_id)`` tuples across all models."""
+    return sorted(
+        (model, selector, eos_id)
+        for model, table in MODEL_SELECTORS.items()
+        for selector, eos_id in table.items()
+    )
+
+
+def equation_of_state(eos, pressure_input_unit="dbar", accelerate=False, **params):
     """Build an :class:`EquationOfState` from a canonical id (or backend).
 
     ``params`` customise parameterised schemes; currently the ``linear`` EOS
@@ -88,13 +147,15 @@ def equation_of_state(eos, pressure_input_unit="dbar", **params):
     """
     if isinstance(eos, str) and eos == "linear" and params:
         backend = make_linear(**params)
-        return EquationOfState(backend, pressure_input_unit=pressure_input_unit)
+        return EquationOfState(backend, pressure_input_unit=pressure_input_unit,
+                               accelerate=accelerate)
     if params:
         raise TypeError(f"EOS {eos!r} does not accept parameters {sorted(params)}.")
-    return EquationOfState(eos, pressure_input_unit=pressure_input_unit)
+    return EquationOfState(eos, pressure_input_unit=pressure_input_unit,
+                           accelerate=accelerate)
 
 
-def from_model(model, selector, pressure_input_unit="dbar", **params):
+def from_model(model, selector, pressure_input_unit="dbar", accelerate=False, **params):
     """Resolve ``model``'s native ``selector`` string to an :class:`EquationOfState`.
 
     Examples
@@ -104,12 +165,7 @@ def from_model(model, selector, pressure_input_unit="dbar", **params):
     >>> from_model("MPAS-Ocean", "jm")           # doctest: +SKIP
     >>> from_model("Oceananigans", "TEOS10EquationOfState")  # doctest: +SKIP
     """
-    model_key = _MODEL_ALIASES.get(str(model).strip().upper())
-    if model_key is None:
-        raise KeyError(
-            f"Unknown model {model!r}. Known models: "
-            f"{', '.join(sorted(set(_MODEL_ALIASES.values())))}."
-        )
+    model_key = _normalise_model(model)
     table = MODEL_SELECTORS[model_key]
     key = str(selector).strip().upper()
     if key not in table:
@@ -118,6 +174,14 @@ def from_model(model, selector, pressure_input_unit="dbar", **params):
             f"Supported (this xeos version): {', '.join(sorted(table))}."
         )
     eos_id = table[key]
+    note = _SELECTOR_NOTES.get((model_key, key))
+    if note is not None:
+        warnings.warn(note, UserWarning, stacklevel=2)
     # Validate the backend exists (guards against typos in the selector table).
     get_backend(eos_id)
-    return equation_of_state(eos_id, pressure_input_unit=pressure_input_unit, **params)
+    return equation_of_state(
+        eos_id,
+        pressure_input_unit=pressure_input_unit,
+        accelerate=accelerate,
+        **params,
+    )

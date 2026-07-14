@@ -32,6 +32,7 @@ from xeos.registry import list_eos
     ("Oceananigans", "SecondOrder", "roquet-second-order"),
     ("Oceananigans", "SimplestRealistic", "roquet-simplest-realistic"),
 ])
+@pytest.mark.filterwarnings("ignore::UserWarning")  # WRIGHT substitution note
 def test_selector_resolves(model, selector, expected):
     assert xeos.from_model(model, selector).id == expected
 
@@ -42,6 +43,28 @@ def test_selector_is_case_and_whitespace_insensitive():
 
 def test_model_alias():
     assert xeos.from_model("MOM", "LINEAR").id == "linear"
+
+
+def test_bare_wright_selector_warns_about_substitution():
+    """MOM6 'WRIGHT' resolves to the corrected reduced kernel, but must warn.
+
+    xeos's contract is "no silent EOS substitution": a run configured with the
+    legacy 'WRIGHT' would not have used this corrected fit, so resolving it
+    quietly would hand the user numbers their simulation never produced.
+    """
+    with pytest.warns(UserWarning, match="legacy 'WRIGHT'"):
+        eos = xeos.from_model("MOM6", "WRIGHT")
+    assert eos.id == "wright97-reduced"
+
+
+def test_corrected_wright_selectors_do_not_warn():
+    """The explicit corrected selectors resolve without a substitution warning."""
+    import warnings
+
+    for selector in ("WRIGHT_RED", "WRIGHT_REDUCED", "WRIGHT_FULL"):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # any warning -> test failure
+            xeos.from_model("MOM6", selector)
 
 
 def test_unknown_model_raises():

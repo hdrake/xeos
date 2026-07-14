@@ -11,4 +11,9 @@ dependencies:
   - xarray
   - dask          # exercises the dask-parallelized path in the tests
   - gsw           # optional 'teos10' backend; lets the TEOS-10 cases run in CI
+  - hypothesis    # property-based tests (test_properties.py)
+  # numba (optional accelerate=True path, test_accel.py) is installed best-effort
+  # in ci.yml instead of here: it lacks builds for the newest Python versions, and
+  # pinning it in the solve would break those matrix jobs. test_accel.py skips when
+  # numba is absent.
   - pip

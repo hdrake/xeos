@@ -19,6 +19,8 @@ State variables: conservative temperature [degC], absolute salinity [g/kg], sea
 pressure [dbar].
 """
 
+import numpy as np
+
 from ..conventions import TemperatureKind, SalinityKind, PressureUnit
 from ..registry import EOSBackend, register
 
@@ -81,7 +83,6 @@ B012 = -1.2637449319e-08; B003 = -4.4324765969e-09
 
 
 def _reduced(ct, sa, p_dbar):
-    import numpy as np
     ss = np.sqrt((sa + _dS) / _SAu)
     tt = ct / _CTu
     pp = p_dbar / _Zu
@@ -172,4 +173,5 @@ register(EOSBackend(
     pressure_unit=PressureUnit.DBAR,
     reference="Roquet et al. (2015), Ocean Modelling, 90, 29-43 (specific-volume form).",
     description="55-term specific-volume polynomial; MOM6 ROQUET_SPV.",
+    valid_range={"t": (-2.0, 40.0), "s": (0.0, 42.0), "p_dbar": (0.0, 8000.0)},
 ))

@@ -15,3 +15,10 @@ from . import _roquet_spv  # noqa: F401
 from . import _roquet_idealized  # noqa: F401
 from . import _mpas  # noqa: F401
 from . import _teos10  # noqa: F401
+
+# Wire optional numba-accelerated density kernels onto their backends. This does
+# NOT import numba (the ufuncs compile lazily on first use with accelerate=True),
+# so the lightweight-core install stays numba-free.
+from . import _accel  # noqa: F401,E402
+
+_accel.attach_fast_kernels()
