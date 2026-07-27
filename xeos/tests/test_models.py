@@ -45,12 +45,15 @@ def test_model_alias():
     assert xeos.from_model("MOM", "LINEAR").id == "linear"
 
 
-def test_bare_wright_selector_warns_about_substitution():
-    """MOM6 'WRIGHT' resolves to the corrected reduced kernel, but must warn.
+def test_bare_wright_selector_notes_the_resolution():
+    """MOM6 'WRIGHT' resolves to 'wright97-reduced' and emits an explanatory note.
 
-    xeos's contract is "no silent EOS substitution": a run configured with the
-    legacy 'WRIGHT' would not have used this corrected fit, so resolving it
-    quietly would hand the user numbers their simulation never produced.
+    Under xeos's "no silent EOS resolution" contract, bare 'WRIGHT' emits a note
+    describing exactly what it maps to. Here the mapping is in fact exact:
+    'wright97-reduced' shares the legacy kernel's coefficients *and* addition
+    order, so it reproduces MOM6's legacy MOM_EOS_Wright.F90 density bit-for-bit
+    (see test_wright_mom6_legacy.py). The note documents that equivalence and
+    points to the warning-free 'WRIGHT_REDUCED'/'WRIGHT_RED' selectors.
     """
     with pytest.warns(UserWarning, match="legacy 'WRIGHT'"):
         eos = xeos.from_model("MOM6", "WRIGHT")
