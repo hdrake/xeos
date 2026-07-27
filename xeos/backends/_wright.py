@@ -8,6 +8,13 @@ coefficients.  ``wright97-reduced`` uses the original (reduced-range) Wright
 coefficients used by MOM6 ``WRIGHT``/``WRIGHT_RED`` (and by ``momlevel``);
 ``wright97-full`` uses the bug-fixed full-range refit, MOM6 ``WRIGHT_FULL``.
 
+The ``density`` kernel below evaluates ``al0``/``p0``/``lambda`` with the same
+left-to-right (Horner) addition order as MOM6's *legacy* ``MOM_EOS_Wright.F90``
+(e.g. ``(A0 + A1*t) + A2*s``). Because it also uses the same coefficients, it
+reproduces that legacy kernel's in-situ density bit-for-bit in float64 and
+matches MOM6's re-associated ``MOM_EOS_Wright_red.F90`` to round-off
+(~1e-13 kg/m^3). See ``tests/test_wright_mom6_legacy.py``.
+
 State variables: potential temperature [degC], practical salinity [PSU],
 pressure in pascals.
 """

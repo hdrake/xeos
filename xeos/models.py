@@ -80,12 +80,16 @@ MODEL_SELECTORS = {
 # contract, keyed by (canonical model, normalised selector).
 _SELECTOR_NOTES = {
     ("MOM6", "WRIGHT"): (
-        "MOM6 'WRIGHT' resolves to xeos 'wright97-reduced', the *corrected* "
-        "reduced-coefficient Wright (1997) fit. MOM6's legacy 'WRIGHT' selector "
-        "runs the uncorrected MOM_EOS_Wright.F90, which can differ from this; "
-        "that legacy-buggy kernel is not yet vendored in xeos. Use "
-        "'WRIGHT_REDUCED' (or 'WRIGHT_RED') to select the corrected kernel "
-        "without this warning."
+        "MOM6 'WRIGHT' resolves to xeos 'wright97-reduced'. This shares the "
+        "reduced-range Wright (1997) coefficients of MOM6's legacy 'WRIGHT' "
+        "(MOM_EOS_Wright.F90) *and* its left-to-right addition order, so it "
+        "reproduces that legacy kernel's in-situ density bit-for-bit in float64 "
+        "over the valid range; it differs from MOM6's re-associated "
+        "'WRIGHT_RED'/'WRIGHT_REDUCED' (MOM_EOS_Wright_red.F90) only by "
+        "floating-point round-off (~1e-13 kg/m^3). MOM6's legacy second-"
+        "derivative bug (use_Wright_2nd_deriv_bug) is not reproduced, but it "
+        "affects neither density nor the first derivatives. Use 'WRIGHT_REDUCED' "
+        "or 'WRIGHT_RED' to select the same kernel without this note."
     ),
 }
 
