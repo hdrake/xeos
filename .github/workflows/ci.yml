@@ -34,6 +34,10 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v7
+        with:
+          # `pip install -e .` resolves the version from the git tag via
+          # hatch-vcs, which a shallow clone cannot see.
+          fetch-depth: 0
 
       - name: Set up conda (miniforge)
         uses: conda-incubator/setup-miniconda@v3
@@ -79,6 +83,10 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v7
+        with:
+          # `pip install -e .` resolves the version from the git tag via
+          # hatch-vcs, which a shallow clone cannot see.
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -121,6 +129,10 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v7
+        with:
+          # `pip install -e .` resolves the version from the git tag via
+          # hatch-vcs, which a shallow clone cannot see.
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v6

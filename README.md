@@ -106,3 +106,57 @@ Test "truth" values are generated from authoritative reference packages in a
 pinned, separate environment and frozen into `xeos/tests/reference/truth.json`;
 the test suite reads that file and stays lightweight. See
 [`xeos/tests/reference/README.md`](xeos/tests/reference/README.md) to regenerate.
+
+## Releasing
+
+**The git tag is the version.** `xeos` has no version string checked into the
+source tree: `hatch-vcs` derives it from the tag at build time and writes
+`xeos/_version.py` (gitignored, but shipped inside the sdist and wheel). To cut
+a release you tag; there is no file to bump and nothing to keep in sync.
+
+1. Make sure `main` is green and has everything you want in the release.
+2. **Publish a GitHub Release** whose tag is `vX.Y.Z`, targeting the commit you
+   want to ship:
+   ```bash
+   gh release create vX.Y.Z --target "$(git rev-parse origin/main)" \
+     --title vX.Y.Z --generate-notes
+   ```
+   Publishing it (not merely pushing a tag) is what fires the workflow.
+3. The **Publish to PyPI** workflow builds from that tag and uploads to PyPI via
+   Trusted Publishing (OIDC — no token secret). It checks out with
+   `fetch-depth: 0` so the tag is visible to `hatch-vcs`, and asserts that the
+   built version matches the tag before publishing.
+4. Verify: <https://pypi.org/project/xeos/>.
+5. conda-forge builds from the PyPI sdist and lags by design — see
+   [`conda/README.md`](conda/README.md). After the first release the autotick
+   bot opens the version-bump PR for you.
+
+To rehearse without publishing, run the workflow manually
+(**Actions → Publish to PyPI → Run workflow**); on `workflow_dispatch` it builds
+and can optionally push to TestPyPI, but never to PyPI.
+
+### If a release fails
+
+PyPI **permanently** reserves a filename: a given `xeos-X.Y.Z-*.whl` can be
+uploaded exactly once, and deleting the release does not free it. So a failed
+publish is almost always fixed by *retagging*, not by re-running the job.
+
+- **`400 File already exists`** — the build produced a version that is already
+  on PyPI. Under tag-derived versioning this means the tag itself is wrong or
+  duplicated. Check what was built:
+  `gh run view <run-id> --log | grep 'Uploading xeos-'`.
+- **Version looks like `0.0.0.dev...` or `X.Y.Z.devN+g<sha>`** — the tag was not
+  reachable from the checkout. Either the release was created before the tag
+  existed, or a `fetch-depth: 0` was dropped from the workflow.
+- **To move a tag that was published at the wrong commit**, delete the release
+  and its tag, then recreate both at the right commit — re-running the failed
+  job would just rebuild the same wrong version:
+  ```bash
+  gh release delete vX.Y.Z --cleanup-tag --yes
+  gh release create vX.Y.Z --target <full-sha> --title vX.Y.Z --notes-file notes.md
+  ```
+  (`--target` needs a **full** 40-character SHA or a branch name; an abbreviated
+  SHA is rejected with `Release.target_commitish is invalid`.) Save the old
+  release notes first — deleting the release discards them.
+- **If a bad version did reach PyPI**, do not try to reuse the number. Yank it
+  on PyPI and release `X.Y.Z+1`.

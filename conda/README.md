@@ -28,8 +28,11 @@ happen there (mostly automatically).
 First-time submission:
 
 1. **Publish to PyPI first.** conda-forge builds from the PyPI sdist, so the
-   `xeos-<version>.tar.gz` must already be on PyPI (the GitHub
-   "Publish to PyPI" workflow does this on a GitHub Release).
+   `xeos-<version>.tar.gz` must already be on PyPI; publishing a GitHub Release
+   tagged `vX.Y.Z` does that. See
+   [Releasing](../README.md#releasing) in the top-level README for the full
+   procedure. The sdist carries the generated `xeos/_version.py`, so the
+   conda-forge build resolves the version without git being present.
 2. **Get the sdist sha256** and paste it into the `{{ PYPI_SHA256 }}`
    placeholder in `meta.yaml`. Either copy it from the sdist's "view hashes"
    link on <https://pypi.org/project/xeos/#files>, or run:

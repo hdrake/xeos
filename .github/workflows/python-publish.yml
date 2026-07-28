@@ -31,6 +31,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # hatch-vcs derives the version from the git tag, which a shallow
+          # clone does not have. Without this the build silently produces a
+          # `0.0.0.dev...` artifact instead of the release version.
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -45,6 +50,21 @@ jobs:
 
       - name: Check distribution metadata
         run: twine check --strict dist/*
+
+      # The version now comes from the tag, so this should be unfalsifiable --
+      # but it is the last point at which a mismatch is cheap to see. Without
+      # it, the symptom is a 400 from PyPI at the very end of the release, and
+      # only if that version happens to already exist.
+      - name: Built version must match the release tag
+        if: github.event_name == 'release'
+        run: |
+          built=$(ls dist/*.tar.gz | sed -E 's|.*/xeos-(.*)\.tar\.gz|\1|')
+          tag="${GITHUB_REF_NAME#v}"
+          echo "tag=$tag built=$built"
+          if [ "$built" != "$tag" ]; then
+            echo "::error::Release tag $GITHUB_REF_NAME implies version '$tag', but the build produced '$built'."
+            exit 1
+          fi
 
       - name: Upload distributions
         uses: actions/upload-artifact@v7
