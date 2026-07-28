@@ -52,10 +52,8 @@ build-backend = "hatchling.build"
 
 # The version comes from the git tag, not from a file in the tree. Releasing is
 # then a single act -- tag `vX.Y.Z` and publish the GitHub Release -- with no
-# second commit that has to be remembered, and no way for the tag and the built
-# artifact to disagree. (They did disagree once: v0.2.1 was tagged one commit
-# before the version bump, so the build produced 0.2.0 artifacts and PyPI
-# rejected them as duplicates.)
+# second commit to remember, and no way for the tag and the built artifact to
+# disagree about which version they are.
 [tool.hatch.version]
 source = "vcs"
 

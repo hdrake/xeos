@@ -134,29 +134,3 @@ a release you tag; there is no file to bump and nothing to keep in sync.
 To rehearse without publishing, run the workflow manually
 (**Actions → Publish to PyPI → Run workflow**); on `workflow_dispatch` it builds
 and can optionally push to TestPyPI, but never to PyPI.
-
-### If a release fails
-
-PyPI **permanently** reserves a filename: a given `xeos-X.Y.Z-*.whl` can be
-uploaded exactly once, and deleting the release does not free it. So a failed
-publish is almost always fixed by *retagging*, not by re-running the job.
-
-- **`400 File already exists`** — the build produced a version that is already
-  on PyPI. Under tag-derived versioning this means the tag itself is wrong or
-  duplicated. Check what was built:
-  `gh run view <run-id> --log | grep 'Uploading xeos-'`.
-- **Version looks like `0.0.0.dev...` or `X.Y.Z.devN+g<sha>`** — the tag was not
-  reachable from the checkout. Either the release was created before the tag
-  existed, or a `fetch-depth: 0` was dropped from the workflow.
-- **To move a tag that was published at the wrong commit**, delete the release
-  and its tag, then recreate both at the right commit — re-running the failed
-  job would just rebuild the same wrong version:
-  ```bash
-  gh release delete vX.Y.Z --cleanup-tag --yes
-  gh release create vX.Y.Z --target <full-sha> --title vX.Y.Z --notes-file notes.md
-  ```
-  (`--target` needs a **full** 40-character SHA or a branch name; an abbreviated
-  SHA is rejected with `Release.target_commitish is invalid`.) Save the old
-  release notes first — deleting the release discards them.
-- **If a bad version did reach PyPI**, do not try to reuse the number. Yank it
-  on PyPI and release `X.Y.Z+1`.

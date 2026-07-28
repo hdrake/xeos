@@ -143,5 +143,4 @@ Consequences worth remembering when editing:
   conda-forge does) works with no git present. Do not add it to
   `[tool.hatch.build] exclude`.
 - Releasing is just publishing a GitHub Release tagged `vX.Y.Z`; there is no bump
-  commit. See "Releasing" in `README.md`, which also documents the retag recipe
-  for a release published at the wrong commit.
+  commit. See "Releasing" in `README.md`.

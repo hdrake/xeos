@@ -51,10 +51,10 @@ jobs:
       - name: Check distribution metadata
         run: twine check --strict dist/*
 
-      # The version now comes from the tag, so this should be unfalsifiable --
-      # but it is the last point at which a mismatch is cheap to see. Without
-      # it, the symptom is a 400 from PyPI at the very end of the release, and
-      # only if that version happens to already exist.
+      # Deriving the version from the tag should make this unfalsifiable, but it
+      # is the last point at which a mismatch is cheap to see: the alternative
+      # symptom is a 400 from PyPI at the very end of the release, and only when
+      # that version already exists.
       - name: Built version must match the release tag
         if: github.event_name == 'release'
         run: |
