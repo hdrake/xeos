@@ -22,12 +22,16 @@ def rho(t, s, p, eos, pressure_input_unit="dbar", accelerate=False, **params):
 
 
 def alpha(t, s, p, eos, pressure_input_unit="dbar", accelerate=False, **params):
-    """Thermal expansion coefficient [degC-1] from the named ``eos``."""
+    """Thermal expansion coefficient [K-1] from the named ``eos``."""
     return _eos(eos, pressure_input_unit, accelerate, params).alpha(t, s, p)
 
 
 def beta(t, s, p, eos, pressure_input_unit="dbar", accelerate=False, **params):
-    """Haline contraction coefficient [(salt unit)-1] from the named ``eos``."""
+    """Haline contraction coefficient from the named ``eos``.
+
+    Units follow the EOS's salinity kind: dimensionless [1] for practical
+    salinity, [kg g-1] for absolute salinity.
+    """
     return _eos(eos, pressure_input_unit, accelerate, params).beta(t, s, p)
 
 

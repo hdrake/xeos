@@ -12,6 +12,10 @@ dependencies:
   - dask          # exercises the dask-parallelized path in the tests
   - gsw           # optional 'teos10' backend; lets the TEOS-10 cases run in CI
   - hypothesis    # property-based tests (test_properties.py)
+  - cf-units      # wraps libudunits2 (conda-only); lets test_cf_attrs.py actually
+                  # verify that the CF `units` we emit parse. Not a runtime or pip
+                  # test dep -- test_cf_attrs.py importorskips it, so the pip
+                  # core-only job just skips those cases.
   # numba (optional accelerate=True path, test_accel.py) is installed best-effort
   # in ci.yml instead of here: it lacks builds for the newest Python versions, and
   # pinning it in the solve would break those matrix jobs. test_accel.py skips when
