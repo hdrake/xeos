@@ -13,7 +13,7 @@ import warnings
 import numpy as np
 import xarray as xr
 
-from .conventions import PressureUnit, to_native_pressure
+from .conventions import PressureUnit, SalinityKind, to_native_pressure
 from .registry import get_backend, list_eos, EOSBackend
 from .xarray_utils import apply_eos
 
@@ -29,20 +29,48 @@ def _is_lazy_input(a):
         return True
     return type(a).__module__.startswith("dask")
 
-# CF-style attributes attached to xarray outputs.
+# CF-style attributes attached to xarray outputs.  Every ``units`` string here is
+# parseable by UDUNITS-2, as CF requires.  ``alpha``/``drho_dt`` are spelled with
+# K-1 rather than degC-1: both are reciprocals of a temperature *difference*, for
+# which the kelvin and the degree Celsius are identical, and K-1 sidesteps the
+# question of whether an offset unit may be exponentiated at all.  Only ``rho``
+# and ``specific_volume`` get a ``standard_name``: the CF table does define
+# ``sea_water_thermal_expansion_coefficient`` but has no counterpart for the
+# haline contraction coefficient, and inventing one would be worse than omitting
+# it, so none of the four coefficient fields is given a standard name.
 _ATTRS = {
     "rho": {"standard_name": "sea_water_density", "units": "kg m-3",
             "long_name": "in-situ density"},
     "specific_volume": {"standard_name": "sea_water_specific_volume",
                         "units": "m3 kg-1", "long_name": "specific volume"},
-    "alpha": {"units": "degC-1", "long_name": "thermal expansion coefficient"},
-    "beta": {"units": "(salinity unit)-1",
-             "long_name": "haline contraction coefficient"},
-    "drho_dt": {"units": "kg m-3 degC-1",
+    "alpha": {"units": "K-1", "long_name": "thermal expansion coefficient"},
+    "drho_dt": {"units": "kg m-3 K-1",
                 "long_name": "density derivative wrt temperature"},
-    "drho_ds": {"units": "kg m-3 (salinity unit)-1",
-                "long_name": "density derivative wrt salinity"},
 }
+
+# ``beta`` and ``drho_ds`` are absent from _ATTRS because their units depend on
+# which salinity the backend expects -- practical salinity (PSS-78) is treated as
+# dimensionless, absolute salinity is g kg-1 -- so they are resolved per call from
+# ``self.salinity`` by :func:`_salinity_attrs`.
+_SALINITY_ATTRS = {
+    "beta": {
+        "long_name": "haline contraction coefficient",
+        "units": {SalinityKind.PRACTICAL: "1", SalinityKind.ABSOLUTE: "kg g-1"},
+    },
+    "drho_ds": {
+        "long_name": "density derivative wrt salinity",
+        "units": {SalinityKind.PRACTICAL: "kg m-3",
+                  SalinityKind.ABSOLUTE: "kg2 m-3 g-1"},
+    },
+}
+
+
+def _salinity_attrs(name, kind):
+    """CF attrs for ``beta``/``drho_ds`` given a backend's :class:`SalinityKind`."""
+    spec = _SALINITY_ATTRS[name]
+    return {"units": spec["units"][SalinityKind(kind)],
+            "long_name": spec["long_name"]}
+
 
 _DT = 1.0e-3  # finite-difference step in temperature [degC]
 _DS = 1.0e-3  # finite-difference step in salinity
@@ -201,21 +229,27 @@ class EquationOfState:
         return apply_eos(func, t, s, pn, attrs=_ATTRS["specific_volume"])
 
     def drho_dt(self, t, s, p):
-        """Partial derivative of density wrt temperature [kg m-3 degC-1]."""
+        """Partial derivative of density wrt temperature [kg m-3 K-1]."""
         self._warn_if_out_of_range(t, s, p)
         pn = self._native_p(p)
         return apply_eos(lambda t_, s_, p_: self._drho_dt(t_, s_, p_),
                          t, s, pn, attrs=_ATTRS["drho_dt"])
 
     def drho_ds(self, t, s, p):
-        """Partial derivative of density wrt salinity [kg m-3 (salt unit)-1]."""
+        """Partial derivative of density wrt salinity.
+
+        Units follow the backend's salinity kind: [kg m-3] for practical salinity
+        (PSS-78, dimensionless) and [kg2 m-3 g-1] for absolute salinity [g kg-1].
+        The returned attributes record which.
+        """
         self._warn_if_out_of_range(t, s, p)
         pn = self._native_p(p)
         return apply_eos(lambda t_, s_, p_: self._drho_ds(t_, s_, p_),
-                         t, s, pn, attrs=_ATTRS["drho_ds"])
+                         t, s, pn,
+                         attrs=_salinity_attrs("drho_ds", self.salinity))
 
     def alpha(self, t, s, p):
-        """Thermal expansion coefficient ``-(1/rho) drho/dT`` [degC-1]."""
+        """Thermal expansion coefficient ``-(1/rho) drho/dT`` [K-1]."""
         self._warn_if_out_of_range(t, s, p)
         pn = self._native_p(p)
 
@@ -225,7 +259,11 @@ class EquationOfState:
         return apply_eos(func, t, s, pn, attrs=_ATTRS["alpha"])
 
     def beta(self, t, s, p):
-        """Haline contraction coefficient ``(1/rho) drho/dS`` [(salt unit)-1].
+        """Haline contraction coefficient ``(1/rho) drho/dS``.
+
+        Units follow the backend's salinity kind: dimensionless [1] for practical
+        salinity (PSS-78) and [kg g-1] for absolute salinity [g kg-1].  The
+        returned attributes record which.
 
         Caveat for near-fresh water: backends whose surface polynomial carries
         an ``s**1.5`` term (``jmd95``, ``unesco``, ``mdjwf``) have a *true*
@@ -242,4 +280,5 @@ class EquationOfState:
         def func(t_, s_, p_):
             return self._drho_ds(t_, s_, p_) / self._density(t_, s_, p_)
 
-        return apply_eos(func, t, s, pn, attrs=_ATTRS["beta"])
+        return apply_eos(func, t, s, pn,
+                         attrs=_salinity_attrs("beta", self.salinity))

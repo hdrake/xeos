@@ -31,9 +31,11 @@ class EOSBackend:
     pressure_unit: PressureUnit
     reference: str
     description: str = ""
-    # Optional analytic primitives (native units):
-    drho_dt: Optional[Callable] = None  # d(rho)/d(temperature) [kg m-3 degC-1]
-    drho_ds: Optional[Callable] = None  # d(rho)/d(salinity)    [kg m-3 (salt unit)-1]
+    # Optional analytic primitives (native units).  drho_ds is per unit of
+    # whichever salinity this backend declares: [kg m-3] for practical salinity
+    # (dimensionless PSS-78), [kg2 m-3 g-1] for absolute salinity [g kg-1].
+    drho_dt: Optional[Callable] = None  # d(rho)/d(temperature) [kg m-3 K-1]
+    drho_ds: Optional[Callable] = None  # d(rho)/d(salinity)
     specific_volume: Optional[Callable] = None  # [m3 kg-1]
     # Optional numba-accelerated ufuncs (built lazily via backends._accel;
     # populated only for realistic kernels, and only ever *executed* when the
