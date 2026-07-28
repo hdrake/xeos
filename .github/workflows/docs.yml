@@ -24,6 +24,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # docs/requirements.txt installs `.[teos10]`, whose version comes from
+          # the git tag via hatch-vcs; conf.py puts it in the page title.
+          fetch-depth: 0
 
       - uses: actions/setup-python@v6
         with:

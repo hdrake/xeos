@@ -19,5 +19,8 @@ env/
 # Sphinx docs build output
 docs/_build/
 
+# Version file generated from the git tag by hatch-vcs at build time.
+xeos/_version.py
+
 # Claude Code transient worktrees
 .claude/worktrees/

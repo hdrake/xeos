@@ -106,3 +106,31 @@ Test "truth" values are generated from authoritative reference packages in a
 pinned, separate environment and frozen into `xeos/tests/reference/truth.json`;
 the test suite reads that file and stays lightweight. See
 [`xeos/tests/reference/README.md`](xeos/tests/reference/README.md) to regenerate.
+
+## Releasing
+
+**The git tag is the version.** `xeos` has no version string checked into the
+source tree: `hatch-vcs` derives it from the tag at build time and writes
+`xeos/_version.py` (gitignored, but shipped inside the sdist and wheel). To cut
+a release you tag; there is no file to bump and nothing to keep in sync.
+
+1. Make sure `main` is green and has everything you want in the release.
+2. **Publish a GitHub Release** whose tag is `vX.Y.Z`, targeting the commit you
+   want to ship:
+   ```bash
+   gh release create vX.Y.Z --target "$(git rev-parse origin/main)" \
+     --title vX.Y.Z --generate-notes
+   ```
+   Publishing it (not merely pushing a tag) is what fires the workflow.
+3. The **Publish to PyPI** workflow builds from that tag and uploads to PyPI via
+   Trusted Publishing (OIDC — no token secret). It checks out with
+   `fetch-depth: 0` so the tag is visible to `hatch-vcs`, and asserts that the
+   built version matches the tag before publishing.
+4. Verify: <https://pypi.org/project/xeos/>.
+5. conda-forge builds from the PyPI sdist and lags by design — see
+   [`conda/README.md`](conda/README.md). After the first release the autotick
+   bot opens the version-bump PR for you.
+
+To rehearse without publishing, run the workflow manually
+(**Actions → Publish to PyPI → Run workflow**); on `workflow_dispatch` it builds
+and can optionally push to TestPyPI, but never to PyPI.

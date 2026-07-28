@@ -123,4 +123,24 @@ gfortran + julia + gsw); the regular suite reads only `truth.json`. Regenerate v
 
 ## Versioning
 
-Single-sourced in `xeos/version.py`, read by hatchling (`[tool.hatch.version]`).
+**The git tag is the single source of truth.** `hatch-vcs`
+(`[tool.hatch.version] source = "vcs"`) derives the version from the tag at build
+time and writes it to `xeos/_version.py`, which is **gitignored** — there is no
+version string in the source tree. `xeos/version.py` is a thin shim that imports
+from it, with a `0.0.0+unknown` fallback for an un-built checkout.
+
+Consequences worth remembering when editing:
+
+- **Never add a version literal back to the tree**, and never "fix" a
+  `0.0.0+unknown` by hardcoding one — it means the package was imported without
+  being built or installed.
+- **Any CI job that installs the package needs `fetch-depth: 0`.** A shallow
+  clone cannot see the tag, so hatch-vcs silently resolves a `.devN+g<sha>`
+  version instead of failing. All checkouts in `ci.yml`, `docs.yml` and
+  `python-publish.yml` set it, and `.readthedocs.yaml` unshallows in
+  `post_checkout` for the same reason.
+- `_version.py` **is** shipped inside the sdist, so building from the sdist (as
+  conda-forge does) works with no git present. Do not add it to
+  `[tool.hatch.build] exclude`.
+- Releasing is just publishing a GitHub Release tagged `vX.Y.Z`; there is no bump
+  commit. See "Releasing" in `README.md`.
