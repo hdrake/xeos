@@ -271,9 +271,10 @@ class EquationOfState:
     def drho_ds(self, t, s, p):
         """Partial derivative of density wrt salinity.
 
-        Units follow the backend's salinity kind: [kg m-3] for practical salinity
-        (PSS-78, dimensionless) and [kg2 m-3 g-1] for absolute salinity [g kg-1].
-        The returned attributes record which.
+        The units are *spelled* to suit the backend's salinity kind --
+        [1000 kg m-3] for practical salinity (PSS-78 is dimensionless but scaled
+        by 1e-3) and [kg2 m-3 g-1] for absolute salinity [g kg-1] -- but the two
+        spellings are the same unit.  The returned attributes record which.
         """
         self._warn_if_out_of_range(t, s, p)
         pn = self._native_p(p)
@@ -294,9 +295,10 @@ class EquationOfState:
     def beta(self, t, s, p):
         """Haline contraction coefficient ``(1/rho) drho/dS``.
 
-        Units follow the backend's salinity kind: dimensionless [1] for practical
-        salinity (PSS-78) and [kg g-1] for absolute salinity [g kg-1].  The
-        returned attributes record which.
+        The units are *spelled* to suit the backend's salinity kind -- [1000]
+        for practical salinity (PSS-78 is dimensionless but scaled by 1e-3) and
+        [kg g-1] for absolute salinity [g kg-1] -- but the two spellings are the
+        same unit.  The returned attributes record which.
 
         Caveat for near-fresh water: backends whose surface polynomial carries
         an ``s**1.5`` term (``jmd95``, ``unesco``, ``mdjwf``) have a *true*
