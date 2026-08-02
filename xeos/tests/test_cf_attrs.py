@@ -2,9 +2,10 @@
 
 Three things are pinned here:
 
-* ``beta``/``drho_ds`` units depend on the backend's :class:`SalinityKind` --
-  practical salinity (PSS-78) is dimensionless, absolute salinity is g kg-1 --
-  so the two families must *not* advertise the same units;
+* ``beta``/``drho_ds`` units are the *same* whatever the backend's
+  :class:`SalinityKind`.  Practical salinity (PSS-78) is dimensionless but
+  scaled by 1e-3, which is the same unit as g kg-1, so labelling the two
+  families differently overstated ``beta`` by 1000 for half the backends;
 * every ``units`` string xeos emits parses under UDUNITS-2 (what CF requires and
   what cf-xarray / MetPy / iris need in order to do unit arithmetic).  This is
   the regression guard for the ``"(salinity unit)-1"`` placeholder that used to
@@ -18,7 +19,7 @@ import xarray as xr
 
 import xeos
 from xeos.conventions import SalinityKind
-from xeos.eos import _ATTRS, _SALINITY_ATTRS
+from xeos.eos import _ATTRS, _SALINITY_ATTRS, _salinity_attrs
 from xeos.registry import get_backend
 
 # One representative backend of each salinity kind. teos10 needs the gsw extra.
@@ -27,20 +28,16 @@ _PRACTICAL = "jmd95"
 
 _QUANTITIES = ("rho", "specific_volume", "alpha", "beta", "drho_dt", "drho_ds")
 
-# Expected units, quantity -> salinity kind (None where kind-independent).
+# Expected units. All kind-independent: practical salinity is dimensionless but
+# scaled by 1e-3, i.e. the same unit as g kg-1.
 _EXPECTED = {
-    "rho": {None: "kg m-3"},
-    "specific_volume": {None: "m3 kg-1"},
-    "alpha": {None: "K-1"},
-    "drho_dt": {None: "kg m-3 K-1"},
-    "beta": {SalinityKind.PRACTICAL: "1", SalinityKind.ABSOLUTE: "kg g-1"},
-    "drho_ds": {SalinityKind.PRACTICAL: "kg m-3", SalinityKind.ABSOLUTE: "kg2 m-3 g-1"},
+    "rho": "kg m-3",
+    "specific_volume": "m3 kg-1",
+    "alpha": "K-1",
+    "drho_dt": "kg m-3 K-1",
+    "beta": "kg g-1",
+    "drho_ds": "kg2 m-3 g-1",
 }
-
-
-def _expected_units(name, kind):
-    table = _EXPECTED[name]
-    return table[None] if None in table else table[kind]
 
 
 def _fields(eos_id, t=10.0, s=35.0, p=0.0):
@@ -50,28 +47,49 @@ def _fields(eos_id, t=10.0, s=35.0, p=0.0):
     return {name: getattr(eos, name)(*args) for name in _QUANTITIES}
 
 
-def test_beta_units_differ_between_salinity_kinds():
-    """The whole point of the fix: same placeholder no longer covers both."""
+def test_beta_units_are_the_same_for_both_salinity_kinds():
+    """Both salinity kinds are the same unit, so both get the same label.
+
+    PSS-78 is dimensionless but scaled so that 35 psu is 35 g of salt per kg of
+    seawater; that is exactly ``g kg-1``. Labelling the practical backends "1"
+    made them claim a beta 1000x larger than the number they return.
+    """
     pytest.importorskip("gsw")
     absolute = _fields(_ABSOLUTE)
     practical = _fields(_PRACTICAL)
     assert get_backend(_ABSOLUTE).salinity is SalinityKind.ABSOLUTE
     assert get_backend(_PRACTICAL).salinity is SalinityKind.PRACTICAL
+    for name in ("beta", "drho_ds"):
+        assert absolute[name].attrs["units"] == practical[name].attrs["units"], name
     assert absolute["beta"].attrs["units"] == "kg g-1"
-    assert practical["beta"].attrs["units"] == "1"
     assert absolute["drho_ds"].attrs["units"] == "kg2 m-3 g-1"
-    assert practical["drho_ds"].attrs["units"] == "kg m-3"
+    # The salinity kind is still recorded -- in the long_name, where it belongs.
+    assert "absolute salinity" in absolute["beta"].attrs["long_name"]
+    assert "practical salinity" in practical["beta"].attrs["long_name"]
+
+
+def test_beta_magnitude_agrees_with_its_label():
+    """The label has to match the number, which is what went wrong before.
+
+    Adding 1 g of salt per kg of seawater raises density by ~0.75 out of
+    ~1027 kg m-3, a relative ~7.3e-4. So beta is ~7.3e-4 *per g kg-1*; a beta
+    of ~7.3e-4 per unit *mass fraction* would be wrong by 1000.
+    """
+    for eos_id in sorted(xeos.list_eos()):
+        if eos_id == "teos10":
+            pytest.importorskip("gsw")
+        beta = float(_fields(eos_id)["beta"].values[0])
+        assert 5e-4 < beta < 1e-3, f"{eos_id}: beta={beta:.3e}"
 
 
 @pytest.mark.parametrize("eos_id", sorted(xeos.list_eos()))
-def test_salinity_units_follow_the_backends_declared_kind(eos_id):
-    """Every registered backend labels beta/drho_ds per its own SalinityKind."""
+def test_salinity_units_do_not_depend_on_the_backends_kind(eos_id):
+    """Every registered backend labels beta/drho_ds identically."""
     if eos_id == "teos10":
         pytest.importorskip("gsw")
-    kind = get_backend(eos_id).salinity
     fields = _fields(eos_id)
     for name in ("beta", "drho_ds"):
-        assert fields[name].attrs["units"] == _expected_units(name, kind), name
+        assert fields[name].attrs["units"] == _EXPECTED[name], name
 
 
 @pytest.mark.parametrize("eos_id", [_PRACTICAL, _ABSOLUTE])
@@ -88,12 +106,11 @@ def test_temperature_coefficients_are_per_kelvin(eos_id):
 def test_all_emitted_units_parse_under_udunits2(eos_id):
     """CF requires UDUNITS-2-parseable units; check all six, both kinds."""
     cf_units = pytest.importorskip("cf_units")
-    kind = get_backend(eos_id).salinity
     if eos_id == "teos10":
         pytest.importorskip("gsw")
     for name, field in _fields(eos_id).items():
         units = field.attrs["units"]
-        assert units == _expected_units(name, kind), name
+        assert units == _EXPECTED[name], name
         cf_units.Unit(units)  # raises ValueError if UDUNITS-2 cannot parse it
 
 
@@ -131,8 +148,11 @@ def test_every_quantity_is_labelled():
 
 def test_attrs_tables_cover_every_salinity_kind():
     """A newly added SalinityKind must not silently KeyError at call time."""
-    for name, spec in _SALINITY_ATTRS.items():
-        assert set(spec["units"]) == set(SalinityKind), name
+    for name in _SALINITY_ATTRS:
+        for kind in SalinityKind:
+            attrs = _salinity_attrs(name, kind)
+            assert attrs["units"] == _EXPECTED[name], (name, kind)
+            assert attrs["long_name"], (name, kind)
     assert set(_ATTRS) == {"rho", "specific_volume", "alpha", "drho_dt"}
 
 
