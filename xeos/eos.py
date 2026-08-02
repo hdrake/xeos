@@ -48,28 +48,61 @@ _ATTRS = {
                 "long_name": "density derivative wrt temperature"},
 }
 
-# ``beta`` and ``drho_ds`` are absent from _ATTRS because their units depend on
-# which salinity the backend expects -- practical salinity (PSS-78) is treated as
-# dimensionless, absolute salinity is g kg-1 -- so they are resolved per call from
-# ``self.salinity`` by :func:`_salinity_attrs`.
+# ``beta`` and ``drho_ds`` are absent from _ATTRS because how their units are
+# *spelled* depends on which salinity the backend expects.  What those units
+# *are* does not -- though it used to: practical salinity was labelled plain
+# dimensionless (``"1"``) and absolute salinity ``g kg-1``, which are a factor of
+# 1000 apart, for backends that return the same numbers (``beta`` is ~7.0e-4 to
+# ~8.2e-4 across all eighteen of them).  Only one of those can have been right.
+#
+# Practical salinity carries no dimension, but it is *scaled*: PSS-78 is a
+# conductivity-ratio scale deliberately constructed so that a salinity of 35 is
+# numerically 35 grams of salt per kilogram of seawater.  So the honest spelling
+# for a practical-salinity backend is dimensionless-with-a-multiplier, which
+# UDUNITS-2 takes literally and which is exactly equal to the absolute-salinity
+# spelling::
+#
+#     Unit("1000")        == Unit("kg g-1")         -> True
+#     Unit("1000 kg m-3") == Unit("kg2 m-3 g-1")    -> True
+#
+# Each kind is therefore described in its own terms -- ``"1000"`` says "per unit
+# of a dimensionless scale a thousandth the size", ``"kg g-1"`` says "per gram
+# per kilogram" -- while any unit algebra downstream sees a single unit and can
+# no longer produce answers that depend on which equation of state was picked.
+#
+# The physical check that fixes which value is right: 1 g of salt per kg of
+# seawater raises density by about 0.75 out of 1027 kg m-3, a relative 7.3e-4.
+# Every backend returns ``beta`` of that magnitude.  Under the old ``"1"`` label
+# that same number claimed that going from pure water to pure salt changes
+# density by a relative 7.3e-4 -- overstating ``beta`` by 1000.
 _SALINITY_ATTRS = {
     "beta": {
         "long_name": "haline contraction coefficient",
-        "units": {SalinityKind.PRACTICAL: "1", SalinityKind.ABSOLUTE: "kg g-1"},
+        "units": {SalinityKind.PRACTICAL: "1000", SalinityKind.ABSOLUTE: "kg g-1"},
     },
     "drho_ds": {
         "long_name": "density derivative wrt salinity",
-        "units": {SalinityKind.PRACTICAL: "kg m-3",
+        "units": {SalinityKind.PRACTICAL: "1000 kg m-3",
                   SalinityKind.ABSOLUTE: "kg2 m-3 g-1"},
     },
 }
 
 
 def _salinity_attrs(name, kind):
-    """CF attrs for ``beta``/``drho_ds`` given a backend's :class:`SalinityKind`."""
+    """CF attrs for ``beta``/``drho_ds`` given a backend's :class:`SalinityKind`.
+
+    ``kind`` selects how the units are *spelled*, not what they are: the two
+    spellings are the same unit (see the note above :data:`_SALINITY_ATTRS`).
+    It also names the salinity in the ``long_name``, since ``"1000"`` on its own
+    tells a human nothing about what the coefficient is differentiated against.
+    """
     spec = _SALINITY_ATTRS[name]
-    return {"units": spec["units"][SalinityKind(kind)],
-            "long_name": spec["long_name"]}
+    kind = SalinityKind(kind)
+    salinity = "practical" if kind is SalinityKind.PRACTICAL else "absolute"
+    return {
+        "units": spec["units"][kind],
+        "long_name": f"{spec['long_name']} (wrt {salinity} salinity)",
+    }
 
 
 _DT = 1.0e-3  # finite-difference step in temperature [degC]
