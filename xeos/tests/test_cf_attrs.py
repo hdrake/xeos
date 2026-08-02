@@ -2,10 +2,11 @@
 
 Three things are pinned here:
 
-* ``beta``/``drho_ds`` units are the *same* whatever the backend's
-  :class:`SalinityKind`.  Practical salinity (PSS-78) is dimensionless but
-  scaled by 1e-3, which is the same unit as g kg-1, so labelling the two
-  families differently overstated ``beta`` by 1000 for half the backends;
+* ``beta``/``drho_ds`` units are *spelled* per :class:`SalinityKind` but are one
+  and the same unit.  Practical salinity (PSS-78) carries no dimension but is
+  scaled, so it is labelled with a bare multiplier (``"1000"``), which UDUNITS-2
+  reads as exactly the absolute-salinity spelling ``"kg g-1"``.  Labelling the
+  practical family a plain ``"1"`` overstated ``beta`` by 1000;
 * every ``units`` string xeos emits parses under UDUNITS-2 (what CF requires and
   what cf-xarray / MetPy / iris need in order to do unit arithmetic).  This is
   the regression guard for the ``"(salinity unit)-1"`` placeholder that used to
@@ -28,16 +29,25 @@ _PRACTICAL = "jmd95"
 
 _QUANTITIES = ("rho", "specific_volume", "alpha", "beta", "drho_dt", "drho_ds")
 
-# Expected units. All kind-independent: practical salinity is dimensionless but
-# scaled by 1e-3, i.e. the same unit as g kg-1.
+# Expected units, quantity -> salinity kind (None where kind-independent). The
+# two beta/drho_ds spellings are the *same unit*; practical salinity is
+# dimensionless with a multiplier, absolute salinity is the equivalent g kg-1.
 _EXPECTED = {
-    "rho": "kg m-3",
-    "specific_volume": "m3 kg-1",
-    "alpha": "K-1",
-    "drho_dt": "kg m-3 K-1",
-    "beta": "kg g-1",
-    "drho_ds": "kg2 m-3 g-1",
+    "rho": {None: "kg m-3"},
+    "specific_volume": {None: "m3 kg-1"},
+    "alpha": {None: "K-1"},
+    "drho_dt": {None: "kg m-3 K-1"},
+    "beta": {SalinityKind.PRACTICAL: "1000", SalinityKind.ABSOLUTE: "kg g-1"},
+    "drho_ds": {
+        SalinityKind.PRACTICAL: "1000 kg m-3",
+        SalinityKind.ABSOLUTE: "kg2 m-3 g-1",
+    },
 }
+
+
+def _expected_units(name, kind):
+    table = _EXPECTED[name]
+    return table[None] if None in table else table[kind]
 
 
 def _fields(eos_id, t=10.0, s=35.0, p=0.0):
@@ -47,23 +57,29 @@ def _fields(eos_id, t=10.0, s=35.0, p=0.0):
     return {name: getattr(eos, name)(*args) for name in _QUANTITIES}
 
 
-def test_beta_units_are_the_same_for_both_salinity_kinds():
-    """Both salinity kinds are the same unit, so both get the same label.
+def test_beta_units_are_spelled_per_kind_but_are_the_same_unit():
+    """The two spellings must differ as strings and agree as units.
 
-    PSS-78 is dimensionless but scaled so that 35 psu is 35 g of salt per kg of
-    seawater; that is exactly ``g kg-1``. Labelling the practical backends "1"
-    made them claim a beta 1000x larger than the number they return.
+    PSS-78 carries no dimension but is scaled, so a practical-salinity backend
+    says ``"1000"`` -- dimensionless with a multiplier -- while an
+    absolute-salinity one says the equivalent ``"kg g-1"``. Each describes its
+    own salinity variable honestly; UDUNITS-2 sees one unit. Labelling the
+    practical backends a plain ``"1"``, as they used to be, made them claim a
+    beta 1000x larger than the number they return.
     """
+    cf_units = pytest.importorskip("cf_units")
     pytest.importorskip("gsw")
     absolute = _fields(_ABSOLUTE)
     practical = _fields(_PRACTICAL)
     assert get_backend(_ABSOLUTE).salinity is SalinityKind.ABSOLUTE
     assert get_backend(_PRACTICAL).salinity is SalinityKind.PRACTICAL
     for name in ("beta", "drho_ds"):
-        assert absolute[name].attrs["units"] == practical[name].attrs["units"], name
+        a, p = absolute[name].attrs["units"], practical[name].attrs["units"]
+        assert a != p, f"{name}: each kind is spelled in its own terms"
+        assert cf_units.Unit(a) == cf_units.Unit(p), f"{name}: but they are one unit"
+    assert practical["beta"].attrs["units"] == "1000"
     assert absolute["beta"].attrs["units"] == "kg g-1"
-    assert absolute["drho_ds"].attrs["units"] == "kg2 m-3 g-1"
-    # The salinity kind is still recorded -- in the long_name, where it belongs.
+    # `"1000"` alone tells a human nothing, so the salinity is named too.
     assert "absolute salinity" in absolute["beta"].attrs["long_name"]
     assert "practical salinity" in practical["beta"].attrs["long_name"]
 
@@ -72,8 +88,9 @@ def test_beta_magnitude_agrees_with_its_label():
     """The label has to match the number, which is what went wrong before.
 
     Adding 1 g of salt per kg of seawater raises density by ~0.75 out of
-    ~1027 kg m-3, a relative ~7.3e-4. So beta is ~7.3e-4 *per g kg-1*; a beta
-    of ~7.3e-4 per unit *mass fraction* would be wrong by 1000.
+    ~1027 kg m-3, a relative ~7.3e-4. So beta is ~7.3e-4 per g kg-1 (equivalently
+    per unit of the 1e-3-scaled practical salinity); a beta of ~7.3e-4 per unit
+    *mass fraction* would be wrong by 1000.
     """
     for eos_id in sorted(xeos.list_eos()):
         if eos_id == "teos10":
@@ -83,13 +100,23 @@ def test_beta_magnitude_agrees_with_its_label():
 
 
 @pytest.mark.parametrize("eos_id", sorted(xeos.list_eos()))
-def test_salinity_units_do_not_depend_on_the_backends_kind(eos_id):
-    """Every registered backend labels beta/drho_ds identically."""
+def test_salinity_units_are_one_unit_across_every_backend(eos_id):
+    """However spelled, every backend's beta/drho_ds is the same unit.
+
+    This is the regression guard for the bug: two backends returning the same
+    number must not advertise units a factor of 1000 apart.
+    """
+    cf_units = pytest.importorskip("cf_units")
     if eos_id == "teos10":
         pytest.importorskip("gsw")
+    kind = get_backend(eos_id).salinity
     fields = _fields(eos_id)
     for name in ("beta", "drho_ds"):
-        assert fields[name].attrs["units"] == _EXPECTED[name], name
+        units = fields[name].attrs["units"]
+        assert units == _expected_units(name, kind), name
+        assert cf_units.Unit(units) == cf_units.Unit(
+            _expected_units(name, SalinityKind.ABSOLUTE)
+        ), name
 
 
 @pytest.mark.parametrize("eos_id", [_PRACTICAL, _ABSOLUTE])
@@ -108,9 +135,10 @@ def test_all_emitted_units_parse_under_udunits2(eos_id):
     cf_units = pytest.importorskip("cf_units")
     if eos_id == "teos10":
         pytest.importorskip("gsw")
+    kind = get_backend(eos_id).salinity
     for name, field in _fields(eos_id).items():
         units = field.attrs["units"]
-        assert units == _EXPECTED[name], name
+        assert units == _expected_units(name, kind), name
         cf_units.Unit(units)  # raises ValueError if UDUNITS-2 cannot parse it
 
 
@@ -148,10 +176,11 @@ def test_every_quantity_is_labelled():
 
 def test_attrs_tables_cover_every_salinity_kind():
     """A newly added SalinityKind must not silently KeyError at call time."""
-    for name in _SALINITY_ATTRS:
+    for name, spec in _SALINITY_ATTRS.items():
+        assert set(spec["units"]) == set(SalinityKind), name
         for kind in SalinityKind:
             attrs = _salinity_attrs(name, kind)
-            assert attrs["units"] == _EXPECTED[name], (name, kind)
+            assert attrs["units"] == _expected_units(name, kind), (name, kind)
             assert attrs["long_name"], (name, kind)
     assert set(_ATTRS) == {"rho", "specific_volume", "alpha", "drho_dt"}
 
