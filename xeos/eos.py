@@ -13,7 +13,12 @@ import warnings
 import numpy as np
 import xarray as xr
 
-from .conventions import PressureUnit, SalinityKind, to_native_pressure
+from .conventions import (
+    PressureUnit,
+    SalinityKind,
+    to_native_pressure,
+    warn_on_input_units,
+)
 from .registry import get_backend, list_eos, EOSBackend
 from .xarray_utils import apply_eos
 
@@ -182,6 +187,18 @@ class EquationOfState:
                 f"ref: {self.reference}>")
 
     # -- internals ---------------------------------------------------------
+    def _check_inputs(self, t, s, p):
+        """Warn about inputs that are mislabelled or out of the backend's range.
+
+        Two independent complaints, deliberately kept apart: a ``units``
+        attribute that disagrees with what the kernels expect, and *values* that
+        leave the backend's documented ``valid_range``. The first is readable off
+        the metadata and so works on lazy inputs; the second needs the numbers
+        and so skips them.
+        """
+        warn_on_input_units(t, s, p, pressure_unit=self.pressure_input_unit)
+        self._warn_if_out_of_range(t, s, p)
+
     def _warn_if_out_of_range(self, t, s, p):
         """Warn (never clamp) when plain numpy/scalar inputs leave the backend's
         documented ``valid_range``.  Lazy inputs (DataArray / dask) are skipped so
@@ -246,13 +263,13 @@ class EquationOfState:
     # -- quantities --------------------------------------------------------
     def rho(self, t, s, p):
         """In-situ density [kg m-3]."""
-        self._warn_if_out_of_range(t, s, p)
+        self._check_inputs(t, s, p)
         pn = self._native_p(p)
         return apply_eos(self._density, t, s, pn, attrs=_ATTRS["rho"])
 
     def specific_volume(self, t, s, p):
         """Specific volume [m3 kg-1]."""
-        self._warn_if_out_of_range(t, s, p)
+        self._check_inputs(t, s, p)
         pn = self._native_p(p)
         if self.backend.specific_volume is not None:
             func = self.backend.specific_volume
@@ -263,7 +280,7 @@ class EquationOfState:
 
     def drho_dt(self, t, s, p):
         """Partial derivative of density wrt temperature [kg m-3 K-1]."""
-        self._warn_if_out_of_range(t, s, p)
+        self._check_inputs(t, s, p)
         pn = self._native_p(p)
         return apply_eos(lambda t_, s_, p_: self._drho_dt(t_, s_, p_),
                          t, s, pn, attrs=_ATTRS["drho_dt"])
@@ -271,11 +288,12 @@ class EquationOfState:
     def drho_ds(self, t, s, p):
         """Partial derivative of density wrt salinity.
 
-        Units follow the backend's salinity kind: [kg m-3] for practical salinity
-        (PSS-78, dimensionless) and [kg2 m-3 g-1] for absolute salinity [g kg-1].
-        The returned attributes record which.
+        The units are *spelled* to suit the backend's salinity kind --
+        [1000 kg m-3] for practical salinity (PSS-78 is dimensionless but scaled
+        by 1e-3) and [kg2 m-3 g-1] for absolute salinity [g kg-1] -- but the two
+        spellings are the same unit.  The returned attributes record which.
         """
-        self._warn_if_out_of_range(t, s, p)
+        self._check_inputs(t, s, p)
         pn = self._native_p(p)
         return apply_eos(lambda t_, s_, p_: self._drho_ds(t_, s_, p_),
                          t, s, pn,
@@ -283,7 +301,7 @@ class EquationOfState:
 
     def alpha(self, t, s, p):
         """Thermal expansion coefficient ``-(1/rho) drho/dT`` [K-1]."""
-        self._warn_if_out_of_range(t, s, p)
+        self._check_inputs(t, s, p)
         pn = self._native_p(p)
 
         def func(t_, s_, p_):
@@ -294,9 +312,10 @@ class EquationOfState:
     def beta(self, t, s, p):
         """Haline contraction coefficient ``(1/rho) drho/dS``.
 
-        Units follow the backend's salinity kind: dimensionless [1] for practical
-        salinity (PSS-78) and [kg g-1] for absolute salinity [g kg-1].  The
-        returned attributes record which.
+        The units are *spelled* to suit the backend's salinity kind -- [1000]
+        for practical salinity (PSS-78 is dimensionless but scaled by 1e-3) and
+        [kg g-1] for absolute salinity [g kg-1] -- but the two spellings are the
+        same unit.  The returned attributes record which.
 
         Caveat for near-fresh water: backends whose surface polynomial carries
         an ``s**1.5`` term (``jmd95``, ``unesco``, ``mdjwf``) have a *true*
@@ -307,7 +326,7 @@ class EquationOfState:
         unbounded quantity and should not be trusted quantitatively at very low
         salinity. (Density itself remains well behaved.)
         """
-        self._warn_if_out_of_range(t, s, p)
+        self._check_inputs(t, s, p)
         pn = self._native_p(p)
 
         def func(t_, s_, p_):

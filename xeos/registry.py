@@ -32,8 +32,10 @@ class EOSBackend:
     reference: str
     description: str = ""
     # Optional analytic primitives (native units).  drho_ds is per unit of
-    # whichever salinity this backend declares: [kg m-3] for practical salinity
-    # (dimensionless PSS-78), [kg2 m-3 g-1] for absolute salinity [g kg-1].
+    # whichever salinity this backend declares, spelled to suit it:
+    # [1000 kg m-3] for practical salinity (PSS-78 is dimensionless but scaled
+    # by 1e-3), [kg2 m-3 g-1] for absolute salinity [g kg-1].  Same unit either
+    # way.
     drho_dt: Optional[Callable] = None  # d(rho)/d(temperature) [kg m-3 K-1]
     drho_ds: Optional[Callable] = None  # d(rho)/d(salinity)
     specific_volume: Optional[Callable] = None  # [m3 kg-1]

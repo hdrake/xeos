@@ -29,8 +29,9 @@ def alpha(t, s, p, eos, pressure_input_unit="dbar", accelerate=False, **params):
 def beta(t, s, p, eos, pressure_input_unit="dbar", accelerate=False, **params):
     """Haline contraction coefficient from the named ``eos``.
 
-    Units follow the EOS's salinity kind: dimensionless [1] for practical
-    salinity, [kg g-1] for absolute salinity.
+    The units are *spelled* to suit the EOS's salinity kind -- [1000] for
+    practical salinity (PSS-78 is dimensionless but scaled by 1e-3), [kg g-1]
+    for absolute salinity -- but the two spellings are the same unit.
     """
     return _eos(eos, pressure_input_unit, accelerate, params).beta(t, s, p)
 
